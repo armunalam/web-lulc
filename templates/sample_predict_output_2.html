@@ -13,7 +13,9 @@
     <style>
         html, body {
             height: 100%;
+            font-family: sans-serif;
         }
+        
         .center {
             display: flex;
             justify-content: center;
@@ -28,17 +30,31 @@
         }
         
         #map {
+            margin-top: -50px;
             height: 100vh;
-            width: 1000px;
+            width: 100%;
+            /* z-index: -1; */
         }
+        
+        /* .upper {
+            border: 1px solid grey;
+            z-index: 100;
+            border: 1px solid grey;
+            border-radius: 5px;
+            box-shadow: 0px 0px 5px grey;
+        } */
+         img.server-image {
+            border-radius: 5px;
+            box-shadow: 0px 0px 5px grey;
+         }
     </style>
 </head>
 <body>
-    <div class="container-fluid">
+    <div class="container-fluid upper">
 
         <div class="row">
             <div class="col-md-6 center_t">
-                <h4 >Input Image and Predicted Mask</h4>
+                <h1 >Input Image and Predicted Mask</h1>
             </div>
             
         </div>
@@ -46,7 +62,7 @@
         <div class="row">
             <form action="" method="get" style="text-align:center">
                 <button type= "submit" class="bg-blue-600 rounded-full px-10 py-2 text-white hover:bg-blue-700 hover:shadow-sm transition-all cursor-pointer" 
-            hx-get="/predict">search again</button>
+            hx-get="/predict">Search Again</button>
             </form>
         </div>
         
@@ -56,21 +72,22 @@
             <!-- input image -->
             <div class="col-md-6 center">
                 <!-- <img src="./imagedata/input_image.png" alt="input image" width="500" height="333"> -->
-                <img src="data:image/png;base64,{{ input_image_data }}" alt="input image" width="500">
+                <img class="server-image" src="data:image/png;base64,{{ input_image_data }}" alt="input image" width="500">
             </div>
             <!-- output patches -->
             <div class="col-md-6 center">
-                <img src="data:image/png;base64,{{ output_image_data }}" alt="output image" width="500">
+                <img class="server-image" src="data:image/png;base64,{{ output_image_data }}" alt="output image" width="500">
             </div>
         </div>
         <div class="center">
             <div id="map"></div>
         </div>
         <br>
-        
-        
-        
     </div>
+        
+        
+        
+    <!-- </div> -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // Define your bounding box coordinates
@@ -108,24 +125,67 @@
         }).addTo(map);
 
         // Optional rectangle to show the bounding area
-        L.rectangle(bounds, { color: "#ff0000", weight: 2, fillOpacity: 0.1 }).addTo(map);
+        // L.rectangle(bounds, { color: "#ff0000", weight: 2, fillOpacity: 0.1 }).addTo(map);
         
-        // const world = [
-        //     [-90, -180], [-90, 180], [90, 180], [90, -180]  // Covers the whole world
-        // ];
-        // const clipArea = [
-        //     [topLeft[0], topLeft[1]],
-        //     [topLeft[0], bottomRight[1]],
-        //     [bottomRight[0], bottomRight[1]],
-        //     [bottomRight[0], topLeft[1]]
-        // ];
+        const world = [
+            [-90, -180], [-90, 180], [90, 180], [90, -180]  // Covers the whole world
+        ];
+        const clipArea = [
+            [topLeft[0], topLeft[1]],
+            [topLeft[0], bottomRight[1]],
+            [bottomRight[0], bottomRight[1]],
+            [bottomRight[0], topLeft[1]]
+        ];
 
-        // // Subtract the area you want to show from the world to make a mask
-        // const mask = L.polygon([world, clipArea], {
-        //     color: "black",
-        //     fillOpacity: 1,
-        //     stroke: false
-        // }).addTo(map);
+        // Subtract the area you want to show from the world to make a mask
+        const mask = L.polygon([world, clipArea], {
+            color: "white",
+            fillOpacity: 1,
+            stroke: false
+        }).addTo(map);
+        
+        // function adjustMapView() {
+        //     const mapContainer = document.getElementById('map');
+        //     const mapHeight = mapContainer.clientHeight;
+        //     const mapWidth = mapContainer.clientWidth;
+
+        //     // Get the pixel coordinates of the top-left and bottom-right corners of the bounds
+        //     const topLeftPixel = map.latLngToContainerPoint(bounds.getNorthWest());
+        //     const bottomRightPixel = map.latLngToContainerPoint(bounds.getSouthEast());
+
+        //     // Calculate the required zoom level to fit the bounds vertically
+        //     const boundsHeight = bottomRightPixel.y - topLeftPixel.y;
+        //     const zoomDeltaY = Math.log2(mapHeight / boundsHeight);
+
+        //     // Calculate the required zoom level to fit the bounds horizontally
+        //     const boundsWidth = bottomRightPixel.x - topLeftPixel.x;
+        //     const zoomDeltaX = Math.log2(mapWidth / boundsWidth);
+
+        //     // Use the smaller zoom delta to ensure the bounds fit within the canvas
+        //     const zoomDelta = Math.min(zoomDeltaY, zoomDeltaX);
+        //     const targetZoom = map.getZoom() + zoomDelta;
+
+        //     // Calculate the new center to align the top of the bounds with the top of the map
+        //     const centerOffsetY = topLeftPixel.y * Math.pow(2, zoomDelta);
+        //     const newCenter = map.containerPointToLatLng([
+        //         mapWidth / 2,
+        //         mapHeight / 2 + centerOffsetY
+        //     ]);
+
+        //     // Set the map's view to the new center and zoom level
+        //     map.setView(newCenter, targetZoom);
+        // }
+
+        // // Ensure the map container has a defined size
+        // const mapContainer = document.getElementById('map');
+        // if (mapContainer.clientWidth === 0 || mapContainer.clientHeight === 0) {
+        //     console.error("Map container has no size! Ensure the #map element has a defined width and height in CSS.");
+        // } else {
+        //     console.log("Map container size:", mapContainer.clientWidth, "x", mapContainer.clientHeight);
+        // }
+
+        // // Adjust the map view after a small delay to ensure the map is fully initialized
+        // setTimeout(adjustMapView, 100);
     </script>
 </body>
 </html>
