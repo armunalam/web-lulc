@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>LULC UI</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css"
+      integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
+      integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+      integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/js/bootstrap.min.js"
+      integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
+      crossorigin="anonymous"
+    ></script>
+    <!-- <link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico" /> -->
+
+    <!-- <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+		integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+		crossorigin="" />
+	<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+		integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+		crossorigin=""></script>
+	<script src='https://unpkg.com/papaparse@latest/papaparse.min.js'></script> -->
+
+    <!-- use local copies of dependencies -->
+    <link rel="stylesheet" href="./dependencies/leaflet.css" />
+    <script src="./dependencies/leaflet.js"></script>
+    <!-- <script src="./dependencies/papaparse.min.js"></script> -->
+    <!-- <script type="text/javascript" src='./data/sectors.data.js'></script> -->
+    <script type="text/javascript" src="./data/admin_zones.js"></script>
+    <link rel="stylesheet" href="styles/style.css" />
+  </head>
+
+  <body>
+    <form class="container" action="/", method="post">
+      <div class="row mt-5">
+        <div class="col-3">Select service:</div>
+        <div class="col-8">
+          <select
+            name="service"
+            class="custom-select"
+            id="service-select"
+          ></select>
+        </div>
+      </div>
+      <div class="row mt-2">
+        <div class="col-3">Select input:</div>
+        <div class="col-8">
+          <select name="input" class="custom-select" id="input-select">
+            <option value="bing">Bing Map</option>
+            <!-- <option value="google">Google Map</option>
+            <option value="sentinel2">Sentinel-2</option>
+            <option value="landsat">Landsat</option> -->
+          </select>
+        </div>
+      </div>
+      <div class="row mt-2">
+        <div class="col-3">Select year:</div>
+        <div class="col-8">
+          <select name="year" class="custom-select" id="input-select">
+            <option value="2023">2023</option>
+            <option value="2019">2019</option>
+          </select>
+        </div>
+      </div>
+	  <div class="row">
+		<div class="col-12"><b>Selection:</b></div>
+	  </div>
+      <div class="row mt-2">
+        <div class="col-4">
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              type="radio"
+              value="rect"
+              checked
+              name="selection"
+              id="selection-rect"
+            />
+            <label class="form-check-label" for="selection-rect">
+              Rectangle
+            </label>
+          </div>
+        </div>
+        <div class="col-4">
+          <label for="">Lattitude</label>
+        </div>
+        <div class="col-4">
+          <label for="">Longitude</label>
+        </div>
+        <!-- <div class="col-3">
+          <label>Action</label>
+        </div> -->
+      </div>
+      
+      <div class="row form-group">
+        <div class="col-4" style="text-align: right; margin-top: 5px;">Top Left Corner</div>
+        <div class="col-4">
+          <input
+            type="number"
+            step="any"
+            class="form-control"
+            id="topLeft-lattitude"
+            placeholder="99.999"
+			name="max_lat"
+			onchange="updateRectangle()"
+          />
+        </div>
+        <div class="col-4">
+          <input
+            type="number"
+            step="any"
+            class="form-control"
+            id="topLeft-longitude"
+            placeholder="99.999"
+			name="min_lon"
+			onchange="updateRectangle()"
+          />
+        </div>
+        
+      
+        <!-- <div class="col-3">
+          or
+          <button
+            type="button"
+            class="btn btn-outline-info"
+            onclick="listenToMap('bottomRight')"
+          >
+            Select from Map
+          </button>
+        </div> -->
+      </div>
+      <div class="row form-group">
+        <div class="col-4" style="text-align: right; margin-top: 5px;">Bottom Right Corner</div>
+        <div class="col-4">
+          <input
+            type="number"
+            step="any"
+            class="form-control"
+            id="bottomRight-lattitude"
+			name="min_lat"
+            placeholder="99.999"
+			onchange="updateRectangle()"
+          />
+        </div>
+        <div class="col-4">
+          <input
+            type="number"
+            step="any"
+            class="form-control"
+            id="bottomRight-longitude"
+			name="max_lon"
+            placeholder="99.999"
+			onchange="updateRectangle()"
+          />
+        </div>
+        <!-- <div class="col-3"></div> -->
+      </div>
+      <div class="row">
+        <div class="col-4">
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              type="radio"
+              value="admin"
+              name="selection"
+              id="selection-admin"
+            />
+            <label class="form-check-label" for="selection-admin">
+              Administrative Zone
+            </label>
+          </div>
+        </div>
+        <div class="col-4">
+          <select
+            name="district"
+            class="custom-select"
+            id="district-select"
+            onchange="populateUpazilaSelector(this)"
+          >
+            <option selected value="">Select District</option>
+          </select>
+        </div>
+        <div class="col-4">
+          <select name="upazila" class="custom-select" id="upazila-select">
+            <option selected value="">Select Upazila</option>
+          </select>
+        </div>
+        <!-- <div class="col-3"></div> -->
+      </div>
+      <div class="row my-4">
+        <div class="col-12">
+          <button
+            id="click-draw-rectangle"
+            type="button"
+            class="btn btn-outline-info"
+            onclick="clickRectangleCornersOnMap()"
+          >
+            Click rectangle corners on map
+          </button>
+          <button
+            type="button"
+            class="btn btn-outline-danger"
+            onclick="resetForm()"
+          >
+            Reset form
+          </button>
+          <!-- <button type="button" class="btn btn-outline-primary" onclick="onSubmit()">Start</button> -->
+
+          <!-- <button
+            type="button"
+            class="btn btn-outline-primary"
+            data-toggle="modal"
+            data-target="#exampleModal"
+            onclick="onSubmit()"
+          >
+            See output
+          </button> -->
+          <input
+            type="submit"
+            value = "submit"
+            class="btn btn-outline-primary"
+          >
+        </input>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-12" id="map"></div>
+      </div>
+    </form>
+    <!-- <div>
+      <h1>Form input</h1>
+      {% if data %}
+     <div>
+         <p>Lattitude: {{data.topLeftLattitude}}</p>
+         <p>Longitude: {{data.topLeftLongitude}}</p>  
+     </div>
+     {% endif %}
+    </div> -->
+    <div><hr></div>
+
+    <!-- Modal -->
+    <div
+      class="modal fade"
+      id="exampleModal"
+      tabindex="-1"
+      role="dialog"
+      aria-labelledby="exampleModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Data Preview</h5>
+            <button
+              type="button"
+              class="close"
+              data-dismiss="modal"
+              aria-label="Close"
+            >
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>
+              Output is a dictionary of key-value pairs from all input elements.
+            </p>
+            <code id="output"> </code>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-dismiss="modal"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script
+      type="text/javascript"
+      src="./scripts/makemap.js?version=1"
+    ></script>
+    <script type="text/javascript" src="./scripts/script.js?version=1"></script>
+  </body>
+</html>

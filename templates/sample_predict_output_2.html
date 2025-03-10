@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script> -->
+    <title>output</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <style>
+        html, body {
+            height: 100%;
+        }
+        .center {
+            display: flex;
+            justify-content: center;
+            padding-left: 2.25rem;
+            padding-right: 2.25rem;
+            padding-bottom: 2.25rem;
+        }
+
+        .center_t {
+            text-align: center;
+            padding: 0.75rem;
+        }
+        
+        #map {
+            height: 100vh;
+            width: 1000px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+
+        <div class="row">
+            <div class="col-md-6 center_t">
+                <h4 >Input Image and Predicted Mask</h4>
+            </div>
+            
+        </div>
+        
+        <div class="row">
+            <form action="" method="get" style="text-align:center">
+                <button type= "submit" class="bg-blue-600 rounded-full px-10 py-2 text-white hover:bg-blue-700 hover:shadow-sm transition-all cursor-pointer" 
+            hx-get="/predict">search again</button>
+            </form>
+        </div>
+        
+        <br>
+        
+        <div class="row center">
+            <!-- input image -->
+            <div class="col-md-6 center">
+                <!-- <img src="./imagedata/input_image.png" alt="input image" width="500" height="333"> -->
+                <img src="data:image/png;base64,{{ input_image_data }}" alt="input image" width="500">
+            </div>
+            <!-- output patches -->
+            <div class="col-md-6 center">
+                <img src="data:image/png;base64,{{ output_image_data }}" alt="output image" width="500">
+            </div>
+        </div>
+        <div class="center">
+            <div id="map"></div>
+        </div>
+        <br>
+        
+        
+        
+    </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Define your bounding box coordinates
+        // const topLeft = { lat: {{ max_lat }}, lng: {{ min_lon }} }; 
+        // const bottomRight = { lat: {{ min_lat }}, lng: {{ max_lon }} }; 
+  
+        const topLeft = [{{ max_lat }}, {{ min_lon }}];
+        const bottomRight = [{{ min_lat }}, {{ max_lon }}];
+
+        const bounds = L.latLngBounds([bottomRight, topLeft]);
+
+        const map = L.map('map', {
+            maxBounds: bounds, // Lock the map into the bounds
+            maxBoundsViscosity: 1.0, // Prevents dragging outside the bounds
+            zoomControl: false, // Disable zoom buttons
+            dragging: false, // Disable dragging
+            scrollWheelZoom: false, // Disable scroll zoom
+            doubleClickZoom: false, // Disable double click zoom
+            boxZoom: false, // Disable shift+drag zoom
+            keyboard: false, // Disable keyboard controls
+            touchZoom: false, // Disable touch zoom
+        }).fitBounds(bounds, {
+            padding: [0, 0],
+            maxZoom: 18, // Optional: prevent zooming in too far
+        });
+        
+        // const center = bounds.getCenter();
+        // const targetZoom = map.getBoundsZoom(bounds, false); // Get the max zoom to fit the bounds
+
+        // map.setView(center, targetZoom);
+
+        // Add the OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Optional rectangle to show the bounding area
+        L.rectangle(bounds, { color: "#ff0000", weight: 2, fillOpacity: 0.1 }).addTo(map);
+        
+        // const world = [
+        //     [-90, -180], [-90, 180], [90, 180], [90, -180]  // Covers the whole world
+        // ];
+        // const clipArea = [
+        //     [topLeft[0], topLeft[1]],
+        //     [topLeft[0], bottomRight[1]],
+        //     [bottomRight[0], bottomRight[1]],
+        //     [bottomRight[0], topLeft[1]]
+        // ];
+
+        // // Subtract the area you want to show from the world to make a mask
+        // const mask = L.polygon([world, clipArea], {
+        //     color: "black",
+        //     fillOpacity: 1,
+        //     stroke: false
+        // }).addTo(map);
+    </script>
+</body>
+</html>

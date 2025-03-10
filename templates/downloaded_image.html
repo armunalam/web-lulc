@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>downloaded image</title>
+    <style>
+        .center {
+            display: flex;
+            justify-content: center;
+            padding-left: 2.25rem;
+            padding-right: 2.25rem;
+            padding-bottom: 2.25rem;
+            }
+
+        .center_t {
+            text-align: center;
+            padding: 0.75rem;
+            }
+    </style>
+</head>
+<body>
+
+    <div class="container-fluid">
+
+        <div class="row">
+            <div class="col-md-8 center_t">
+                <h4 >Downloaded Sattelite Image with given cordinate</h4>
+            </div>
+            
+        </div>
+        
+        <div class="row center">
+            <!-- input image -->
+            <div class="col-md-8 center">
+                <img src="./images/d_by_cord_png.png" alt="input image" width="500" height="333">
+            </div>
+        </div>
+        
+        <!-- Inference time -->
+        <div class="row"> 
+            <p style="text-align:center">Inference time: {{ ex_time }} ms</p>
+        </div>
+        <br>
+        <div class="row">
+            <form action="" method="get" style="text-align:center">
+                <button type= "submit" class="bg-blue-600 rounded-full px-10 py-2 text-white hover:bg-blue-700 hover:shadow-sm transition-all cursor-pointer" 
+            hx-get="/test">download again</button>
+            </form>
+            
+            <form action="" method="post" style="text-align:center">
+                <button type= "submit" class="bg-blue-600 rounded-full px-10 py-2 text-white hover:bg-blue-700 hover:shadow-sm transition-all cursor-pointer" 
+            hx-post="/test/predict">predcit</button>
+            </form>
+        </div>
+</div>
+    
+</body>
+</html>
