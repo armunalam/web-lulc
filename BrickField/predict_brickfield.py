@@ -158,6 +158,7 @@ def decode_segmap(image: np.ndarray, nc=2) -> np.ndarray:
 
 
 def predict(image: np.ndarray, patch_size: int = 1500) -> tuple[Image.Image, Image.Image]:
+    image = image[:, :, :3]
     original_image = image
     patch_images, image_size = make_patches(image, patch_size)
     size_y, size_x, _, p_s_1, p_s_2, _ = patch_images.shape

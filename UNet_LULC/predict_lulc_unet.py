@@ -158,10 +158,15 @@ def predict(image: np.ndarray, patch_size: int = 513) -> tuple[Image.Image, Imag
     # image = image.crop((0, 0,
     #                     i_width // patch_size * patch_size,
     #                     i_height // patch_size * patch_size))
+    image = image[:, :, :3]
     original_image = image
+    # print('image shape', image[:, :, :3].shape)
     patch_images, image_size = make_patches(image, patch_size)
-    size_y, size_x, _, p_s_1, p_s_2, _ = patch_images.shape
-    patch_images = patch_images.reshape(size_x * size_y, p_s_1, p_s_2, 3)
+    # print('patch image shape', patch_images.shape)
+    # print(patch_images[0, 0, 0, 0, 0, :])
+    size_y, size_x, _, p_s_1, p_s_2, channels = patch_images.shape
+    patch_images = patch_images.reshape(
+        size_x * size_y, p_s_1, p_s_2, channels)
 
     output_images = []
 
@@ -171,7 +176,7 @@ def predict(image: np.ndarray, patch_size: int = 513) -> tuple[Image.Image, Imag
         image = torchvision.transforms.functional.to_tensor(
             image).to(device)
         image = torchvision.transforms.functional.normalize(
-            image, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]).reshape(1, 3, patch_size, patch_size)
+            image, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]).reshape(1, channels, patch_size, patch_size)
         # image = image.to(device, dtype=torch.float32)
         image = image.to(dtype=torch.float32)
 
@@ -186,7 +191,7 @@ def predict(image: np.ndarray, patch_size: int = 513) -> tuple[Image.Image, Imag
         output_images.append(output)
 
     output_images = np.stack(output_images, axis=0).reshape(
-        size_y, size_x, 1, p_s_1, p_s_2, 3)
+        size_y, size_x, 1, p_s_1, p_s_2, channels)
     # print(output_images.shape)
 
     output_image = unpatchify(output_images, image_size)
