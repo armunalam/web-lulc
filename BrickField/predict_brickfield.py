@@ -165,6 +165,7 @@ def predict(image: np.ndarray, patch_size: int = 1500) -> tuple[Image.Image, Ima
     patch_images = patch_images.reshape(size_x * size_y, p_s_1, p_s_2, 3)
 
     output_images = []
+    count_array = np.zeros(6, dtype=np.int_)
 
     for index, image in enumerate(patch_images):
         model.eval()
@@ -179,6 +180,15 @@ def predict(image: np.ndarray, patch_size: int = 1500) -> tuple[Image.Image, Ima
 
         output = model(image)
         output = output.detach().max(dim=1)[1].cpu().numpy().squeeze(axis=0)
+
+        unique, counter = np.unique(output, return_counts=True)
+        count_temp = np.zeros(6, dtype=np.int_)
+
+        count_temp[unique] = counter
+
+        count_array += count_temp
+        # count_array += np.pad(counter,
+        #                       (0, count_array.size - counter.size), 'constant')
 
         output = decode_segmap(output)
 
@@ -195,7 +205,14 @@ def predict(image: np.ndarray, patch_size: int = 1500) -> tuple[Image.Image, Ima
     img = Image.fromarray(output_image)
     # img.save('final.png')
 
-    return Image.fromarray(original_image), img
+    labels = ['Non-Brickfield Area', 'Brickfield']
+    colors = ['0, 0, 0', '255, 0, 0']
+    area = [f'{val * 4.92e-6:,.2f}' for val in count_array]
+    max_pixel = np.sum(count_array) or 1
+    count_array = [f'{val / max_pixel * 100:.2f}%' for val in count_array]
+    table = list(zip(labels, list(count_array), area, colors))
+
+    return Image.fromarray(original_image), img, table
 
 
 if __name__ == '__main__':

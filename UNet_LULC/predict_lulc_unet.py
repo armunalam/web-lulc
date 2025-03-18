@@ -4,7 +4,9 @@ import numpy as np
 import torch.nn as nn
 from PIL import Image
 # from patchify import patchify, unpatchify
+from torch.utils.data import Dataset, DataLoader
 from UNet_LULC.UNet.unet.unet_model import UNet
+
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -153,6 +155,45 @@ def decode_segmap(image: np.ndarray, nc=6) -> np.ndarray:
     return rgb
 
 
+class LULCDataset(Dataset):
+    def __init__(self, images, transform=None, gt_transform=None):
+        self.transform = transform
+        self.gt_transform = gt_transform
+
+        self.images = images.transpose((0, 3, 1, 2))
+
+        # self.imdb = []
+        # for img in os.listdir(self.datadir+'/images'):
+        #     image_name = img.split('.')[0]
+        #     ext_name = img.split('.')[-1]
+        #     img_path = os.path.join(self.datadir, 'images', img)
+        #     gt_path = os.path.join(self.datadir, 'gts',
+        #                            image_name + '_gt.' + ext_name)
+        #     self.imdb.append((img_path, gt_path))
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        return self.images[idx]
+        # img_path, gt_path = self.imdb[idx]
+
+        # # Load images
+        # image = Image.open(img_path).convert("RGB")
+        # gt_image = Image.open(gt_path).convert("L")  # Assuming GT is grayscale
+
+        # # Apply transformations if provided
+        # if self.transform:
+        #     image = self.transform(image)
+
+        # label = np.array(gt_image)
+        # # print(np.unique(label))
+
+        # label = torch.LongTensor(label)
+
+        # return image, label
+
+
 def predict(image: np.ndarray, patch_size: int = 513) -> tuple[Image.Image, Image.Image]:
     # i_width, i_height = image.size
     # image = image.crop((0, 0,
@@ -168,7 +209,38 @@ def predict(image: np.ndarray, patch_size: int = 513) -> tuple[Image.Image, Imag
     patch_images = patch_images.reshape(
         size_x * size_y, p_s_1, p_s_2, channels)
 
+    # transform = torchvision.transforms.Compose([
+    #     torchvision.transforms.ToTensor(),
+    #     torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],  # ImageNet mean
+    #                                      std=[0.229, 0.224, 0.225])
+    # ])
+
+    # dataset = LULCDataset(
+    #     patch_images, transform=transform)
+
+    # loader = DataLoader(
+    #     dataset, batch_size=4, shuffle=False, num_workers=4)
+
+    # outputs = []
+
+    # with torch.no_grad():
+    #     for batch_images in loader:
+    #         model.eval()
+    #         batch_images = batch_images.to(device=device, dtype=torch.float32)
+    #         print(batch_images.shape)
+    #         batch_output = model(batch_images)
+    #         batch_output = batch_output.detach().max(
+    #             dim=1)[1].cpu().numpy()
+    #         print(batch_output.shape)
+
+    #         outputs.append(batch_output)
+
+    # outputs = np.concatenate(outputs, axis=0).reshape(
+    #     size_y, size_x, 1, p_s_1, p_s_2, channels)
+    # print(outputs.shape)
+
     output_images = []
+    count_array = np.zeros(6, dtype=np.int_)
 
     for index, image in enumerate(patch_images):
         model.eval()
@@ -183,6 +255,18 @@ def predict(image: np.ndarray, patch_size: int = 513) -> tuple[Image.Image, Imag
         output = model(image)
         # output = output.detach().max(dim=1)[1].cpu().numpy().squeeze(axis=0)
         output = output.detach().max(dim=1)[1].cpu().numpy().squeeze(axis=0)
+        # print('output:', output.shape)
+        unique, counter = np.unique(output, return_counts=True)
+        count_temp = np.zeros(6, dtype=np.int_)
+
+        count_temp[unique] = counter
+
+        count_array += count_temp
+        # print(uni, counter)
+        # count_array += np.pad(counter,
+        #                       (0, count_array.size - counter.size), 'constant')
+        # print('counter', counter)
+        # print('count_array', count_array)
 
         output = decode_segmap(output)
 
@@ -201,9 +285,21 @@ def predict(image: np.ndarray, patch_size: int = 513) -> tuple[Image.Image, Imag
     # image = image.crop((0, 0, width, height))
     # output.save('final_unet.png')
 
+    labels = ['Farmland',
+              'Water', 'Forest', 'Built-Up', 'Meadow']
+    colors = ['0, 255, 0', '0, 0, 255',
+              '0, 255, 255', '255, 0, 0', '255, 255, 0']
+    print(count_array)
+    area = [f'{val * 4.92e-6:,.2f}' for val in count_array[1:]]
+    max_pixel = np.sum(count_array[1:]) or 1
+    # print(max_pixel)
+    count_array = [f'{val / max_pixel * 100:.2f}%' for val in count_array[1:]]
+    table = list(zip(labels, list(count_array), area, colors))
+    print(count_array)
+
     torch.cuda.empty_cache()
 
-    return Image.fromarray(original_image), img
+    return Image.fromarray(original_image), img, table
 
 
 if __name__ == '__main__':

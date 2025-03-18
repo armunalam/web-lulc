@@ -179,12 +179,14 @@ def submit(request: Request,
     image = get_bing_map(min_lat,
                          min_lon, max_lat, max_lon, year)
 
+    table = None
+
     if image is not None:
         if service == 'LULC':
             # input_image, output_image = predict_lulc(image)
-            input_image, output_image = predict_lulc_unet(image)
-        elif service == 'Brick Field':
-            input_image, output_image = predict_brickfield(image)
+            input_image, output_image, table = predict_lulc_unet(image)
+        elif service == 'Brickfield':
+            input_image, output_image, table = predict_brickfield(image)
 
         # buffered = io.BytesIO()
         # input_image.save(buffered, format="JPEG", optimize=True)
@@ -203,15 +205,22 @@ def submit(request: Request,
     else:
         print('Error')
 
-    return template.TemplateResponse('sample_predict_output_2.html', {'request': request,
-                                                                      'input_image_data': input_base64,
-                                                                      'output_image_data': output_base64,
-                                                                      #   'map_base64': map_base64,
-                                                                      'min_lon': min_lon,
-                                                                      'min_lat': min_lat,
-                                                                      'max_lon': max_lon,
-                                                                      'max_lat': max_lat,
-                                                                      })
+    # table = {
+    #     'C': (1, 2),
+    #     'E': (3, 4),
+    #     'CAT': (9, 12),
+    # }
+
+    return template.TemplateResponse('output.html', {'request': request,
+                                                     'input_image_data': input_base64,
+                                                     'output_image_data': output_base64,
+                                                     #   'map_base64': map_base64,
+                                                     'min_lon': min_lon,
+                                                     'min_lat': min_lat,
+                                                     'max_lon': max_lon,
+                                                     'max_lat': max_lat,
+                                                     'table': table,
+                                                     })
     # {"request": request,  "predict_result": predict_result})
 
     # @app.post('/')

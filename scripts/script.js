@@ -1,6 +1,6 @@
 const services = [
   "LULC",
-  "Brick Field"
+  "Brickfield"
   // "NDVI",
   // "NDWI",
   // "Building Categorization",
