@@ -104,7 +104,7 @@
                 <tbody>
                     {% for label, pixel, area, color in table %}
                     <tr>
-                        <td>{{ label }} <span style="display: block; height: 5px; width: 100%; background-color: rgb({{ color }});"></span></td>
+                        <td>{{ label }} <span style="display: block; height: 5px; width: 100%; background-color: rgb{{ color }};"></span></td>
                         <td>{{ pixel }}</td>
                         <td>{{ area }}</td>
                     </tr>
