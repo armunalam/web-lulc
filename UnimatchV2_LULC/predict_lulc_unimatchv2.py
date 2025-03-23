@@ -24,7 +24,7 @@ for k, v in checkpoint['model'].items():
 model.load_state_dict(new_state_dict)
 
 
-def predict(image: np.ndarray, patch_size: int = 518) -> tuple[Image.Image, Image.Image]:
+def predict(image: np.ndarray, patch_size: int = 518) -> tuple[Image.Image, Image.Image, list]:
     image = image[:, :, :3]
     original_image = image
 
