@@ -167,11 +167,11 @@ def submit(request: Request,
            service: str = Form(...),
            year: str = Form(...)):
 
-    print(service)
+    # print(service)
 
     min_lon, min_lat = float(min_lon), float(min_lat)
     max_lon, max_lat = float(max_lon), float(max_lat)
-    print(min_lat, min_lon, max_lat, max_lon)
+    # print(min_lat, min_lon, max_lat, max_lon)
     # min_lon, min_lat = 90.30638136, 23.78550914
     # max_lon, max_lat = 90.53348936, 23.88819931
 
