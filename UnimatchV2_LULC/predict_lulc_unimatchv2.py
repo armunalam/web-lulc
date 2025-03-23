@@ -1,58 +1,57 @@
+# import argparse
+# from copy import deepcopy
+# import logging
+import os
+# import pprint
+
 import torch
 import torchvision
 import numpy as np
-import torch.nn as nn
 from PIL import Image
-# from patchify import patchify, unpatchify
-from torch.utils.data import Dataset, DataLoader
-from UNet_LULC.UNet.unet.unet_model import UNet
+# from torch import nn
+# import torch.backends.cudnn as cudnn
+# from torch.optim import AdamW
+# from torch.utils.data import DataLoader
+# from torch.utils.tensorboard import SummaryWriter
+# import yaml
+
+# from dataset.semi import SemiDataset
+from UnimatchV2_LULC.model.semseg.dpt import DPT
+# from supervised import evaluate
+# from util.classes import CLASSES
+# from util.ohem import ProbOhemCrossEntropy2d
+# from util.utils import count_params, init_log, AverageMeter
+# from util.dist_helper import setup_distributed
+
+# from tqdm import tqdm
 
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = 'cuda'
 
-model = UNet(n_channels=3, n_classes=6, bilinear=False)
+model = DPT(
+    **{'encoder_size': 'base', 'features': 128, 'out_channels': [96, 192, 384, 768],
+       'nclass': 6})
+# state_dict = torch.load(f'./pretrained/{cfg["backbone"]}.pth')
+# model.backbone.load_state_dict(state_dict)
 
-# Wrap the model with DataParallel to use multiple GPUs
-if torch.cuda.device_count() > 1:
-    # print(f"Using {torch.cuda.device_count()} GPUs!")
-    model = nn.DataParallel(model)
+# exp/coco/unimatch_v2/dinov2_base/bd/best_after.pth
+# unimatch_path = 'exp/best_after.pth'
+
+model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
 model.to(device)
 
-checkpoint = torch.load(
-    '/opt/models/unet/best_model3.pth', weights_only=False)
-# checkpoint = torch.load(
-#     'UNet_LULC/checkpoints/best_model.pth', weights_only=False)
+unimatch_path = '/home/skeptic/web-lulc/UnimatchV2_LULC/exp/best_after.pth'
+if os.path.exists(unimatch_path):
+    checkpoint = torch.load(
+        unimatch_path, map_location='cpu', weights_only=False)
 
-# Adjust for multi-GPU loading if needed
-if torch.cuda.device_count() > 1:
     new_state_dict = {}
-    for key, value in checkpoint["model_state_dict"].items():
-        new_key = "module." + \
-            key if not key.startswith("module.") else key
-        new_state_dict[new_key] = value
+    for k, v in checkpoint['model'].items():
+        new_key = k.replace("module.", "")  # Remove 'module.' prefix
+        new_state_dict[new_key] = v
+
     model.load_state_dict(new_state_dict)
-else:
-    model.load_state_dict(checkpoint["model_state_dict"])
-
-# def make_patches(image: Image.Image, patch_size: int) -> tuple[Image.Image, np.ndarray, tuple[int, ...]]:
-#     # Nearest size which is patchable
-#     size_x = (image.size[0] // patch_size) * patch_size
-#     size_y = (image.size[1] // patch_size) * patch_size
-
-#     image = image.crop((0, 0, size_x, size_y))
-#     image_array = np.asarray(image)
-#     image_size = image_array.shape
-#     patch_images = patchify(image_array, patch_size=(
-#         patch_size, patch_size, 3), step=patch_size)
-#     # image = unpatchify(patch_images, image_size)
-#     # image = Image.fromarray(image)
-
-#     # x, y, _, a, b, c = patch_images.shape
-
-#     # patch_images = patch_images.reshape(x, y, a, b, c)
-
-#     return image, patch_images, image_size
 
 
 def make_patches(image: np.ndarray, patch_size: int) -> tuple[np.ndarray, tuple[int, int]]:
@@ -158,89 +157,16 @@ def decode_segmap(image: np.ndarray, nc=6) -> np.ndarray:
     return rgb
 
 
-class LULCDataset(Dataset):
-    def __init__(self, images, transform=None, gt_transform=None):
-        self.transform = transform
-        self.gt_transform = gt_transform
+def predict(image: np.ndarray, patch_size: int = 518) -> tuple[Image.Image, Image.Image]:
 
-        self.images = images.transpose((0, 3, 1, 2))
-
-        # self.imdb = []
-        # for img in os.listdir(self.datadir+'/images'):
-        #     image_name = img.split('.')[0]
-        #     ext_name = img.split('.')[-1]
-        #     img_path = os.path.join(self.datadir, 'images', img)
-        #     gt_path = os.path.join(self.datadir, 'gts',
-        #                            image_name + '_gt.' + ext_name)
-        #     self.imdb.append((img_path, gt_path))
-
-    def __len__(self):
-        return len(self.images)
-
-    def __getitem__(self, idx):
-        return self.images[idx]
-        # img_path, gt_path = self.imdb[idx]
-
-        # # Load images
-        # image = Image.open(img_path).convert("RGB")
-        # gt_image = Image.open(gt_path).convert("L")  # Assuming GT is grayscale
-
-        # # Apply transformations if provided
-        # if self.transform:
-        #     image = self.transform(image)
-
-        # label = np.array(gt_image)
-        # # print(np.unique(label))
-
-        # label = torch.LongTensor(label)
-
-        # return image, label
-
-
-def predict(image: np.ndarray, patch_size: int = 513) -> tuple[Image.Image, Image.Image]:
-    # i_width, i_height = image.size
-    # image = image.crop((0, 0,
-    #                     i_width // patch_size * patch_size,
-    #                     i_height // patch_size * patch_size))
     image = image[:, :, :3]
     original_image = image
-    # print('image shape', image[:, :, :3].shape)
+
     patch_images, image_size = make_patches(image, patch_size)
-    # print('patch image shape', patch_images.shape)
-    # print(patch_images[0, 0, 0, 0, 0, :])
+
     size_y, size_x, _, p_s_1, p_s_2, channels = patch_images.shape
     patch_images = patch_images.reshape(
         size_x * size_y, p_s_1, p_s_2, channels)
-
-    # transform = torchvision.transforms.Compose([
-    #     torchvision.transforms.ToTensor(),
-    #     torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],  # ImageNet mean
-    #                                      std=[0.229, 0.224, 0.225])
-    # ])
-
-    # dataset = LULCDataset(
-    #     patch_images, transform=transform)
-
-    # loader = DataLoader(
-    #     dataset, batch_size=4, shuffle=False, num_workers=4)
-
-    # outputs = []
-
-    # with torch.no_grad():
-    #     for batch_images in loader:
-    #         model.eval()
-    #         batch_images = batch_images.to(device=device, dtype=torch.float32)
-    #         print(batch_images.shape)
-    #         batch_output = model(batch_images)
-    #         batch_output = batch_output.detach().max(
-    #             dim=1)[1].cpu().numpy()
-    #         print(batch_output.shape)
-
-    #         outputs.append(batch_output)
-
-    # outputs = np.concatenate(outputs, axis=0).reshape(
-    #     size_y, size_x, 1, p_s_1, p_s_2, channels)
-    # print(outputs.shape)
 
     output_images = []
     count_array = np.zeros(6, dtype=np.int_)
@@ -252,24 +178,19 @@ def predict(image: np.ndarray, patch_size: int = 513) -> tuple[Image.Image, Imag
             image).to(device)
         image = torchvision.transforms.functional.normalize(
             image, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]).reshape(1, channels, patch_size, patch_size)
-        # image = image.to(device, dtype=torch.float32)
+
         image = image.to(dtype=torch.float32)
 
         output = model(image)
-        # output = output.detach().max(dim=1)[1].cpu().numpy().squeeze(axis=0)
+
         output = output.detach().max(dim=1)[1].cpu().numpy().squeeze(axis=0)
-        # print('output:', output.shape)
+
         unique, counter = np.unique(output, return_counts=True)
         count_temp = np.zeros(6, dtype=np.int_)
 
         count_temp[unique] = counter
 
         count_array += count_temp
-        # print(uni, counter)
-        # count_array += np.pad(counter,
-        #                       (0, count_array.size - counter.size), 'constant')
-        # print('counter', counter)
-        # print('count_array', count_array)
 
         output = decode_segmap(output)
 
@@ -306,6 +227,7 @@ def predict(image: np.ndarray, patch_size: int = 513) -> tuple[Image.Image, Imag
 
 
 if __name__ == '__main__':
-    image = Image.open(
-        '/opt/datasets/unet/BingRGB/test/images/patch_00184.png')
-    predict(image)
+    img = Image.open('/home/skeptic/web-lulc/trash/full_image.png')
+
+    pred = predict(np.asarray(img))[1]
+    pred.save('/home/skeptic/web-lulc/trash/another_test_5.png')

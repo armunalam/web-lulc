@@ -10,6 +10,7 @@ from PIL import Image
 from bing_map import get_bing_map
 # from predict_lulc import predict as predict_lulc
 from UNet_LULC.predict_lulc_unet import predict as predict_lulc_unet
+from UnimatchV2_LULC.predict_lulc_unimatchv2 import predict as predict_lulc_unimatchv2
 from BrickField.predict_brickfield import predict as predict_brickfield
 # from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -19,7 +20,7 @@ import torch
 from torch import nn
 
 from UNet_LULC.UNet.unet.unet_model import UNet as UNet
-from BrickField.UNet.unet.unet_model import UNet as BrickField
+# from BrickField.UNet.unet.unet_model import UNet as BrickField
 
 
 # input_tif_locations = None
@@ -182,7 +183,9 @@ def submit(request: Request,
     table = None
 
     if image is not None:
-        if service == 'LULC':
+        if service == 'LULC (Unimatch V2)':
+            input_image, output_image, table = predict_lulc_unimatchv2(image)
+        if service == 'LULC (Unet)':
             # input_image, output_image = predict_lulc(image)
             input_image, output_image, table = predict_lulc_unet(image)
         elif service == 'Brickfield':
@@ -200,7 +203,7 @@ def submit(request: Request,
         output_base64 = pil_to_base64(output_image)
         # map_base64 = pil_to_base64(map_image)
 
-        # input_image.save('imagedata/input_image.png')
+        # input_image.save('trash/input_image_123.png')
         # output_image.save('imagedata/output_image.png')
     else:
         print('Error')
