@@ -9,7 +9,6 @@ from utils.utils import make_patches, unpatchify, decode_segmap, LABELS, COLORS
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 model = UNet(n_channels=3, n_classes=6, bilinear=False)
-model.to(device)
 
 unimatch_path = '/opt/models/exp/unet_0.pth'
 checkpoint = torch.load(
@@ -19,6 +18,9 @@ for k, v in checkpoint['model_state_dict'].items():
     new_key = k.replace('module.', '')
     new_state_dict[new_key] = v
 model.load_state_dict(new_state_dict)
+
+model = torch.compile(model, backend="inductor", dynamic=False)
+model.to(device)
 
 
 def predict(image: np.ndarray, patch_size: int = 513) -> tuple[Image.Image, Image.Image, list]:

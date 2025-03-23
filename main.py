@@ -20,6 +20,8 @@ import torch
 from torch import nn
 
 from UNet_LULC.UNet.unet.unet_model import UNet as UNet
+
+from time import perf_counter
 # from BrickField.UNet.unet.unet_model import UNet as BrickField
 
 
@@ -183,6 +185,7 @@ def submit(request: Request,
     table = None
 
     if image is not None:
+        time_start = perf_counter()
         if service == 'LULC (Unimatch V2)':
             input_image, output_image, table = predict_lulc_unimatchv2(image)
         if service == 'LULC (Unet)':
@@ -190,6 +193,8 @@ def submit(request: Request,
             input_image, output_image, table = predict_lulc_unet(image)
         elif service == 'Brickfield':
             input_image, output_image, table = predict_brickfield(image)
+        time_stop = perf_counter()
+        print(f'Time elapsed during inference: {time_stop - time_start}')
 
         # buffered = io.BytesIO()
         # input_image.save(buffered, format="JPEG", optimize=True)

@@ -10,7 +10,6 @@ from utils.utils import make_patches, unpatchify, decode_segmap, LABELS, COLORS
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 model = UNet(n_channels=3, n_classes=2, bilinear=False)
-model.to(device)
 
 unimatch_path = '/opt/models/exp/brickfield_unet_0.pth'
 checkpoint = torch.load(
@@ -20,6 +19,9 @@ for k, v in checkpoint['model_state_dict'].items():
     new_key = k.replace('module.', '')
     new_state_dict[new_key] = v
 model.load_state_dict(new_state_dict)
+
+model = torch.compile(model, backend="inductor", dynamic=False)
+model.to(device)
 
 
 def predict(image: np.ndarray, patch_size: int = 1500) -> tuple[Image.Image, Image.Image, list]:
@@ -65,6 +67,8 @@ def predict(image: np.ndarray, patch_size: int = 1500) -> tuple[Image.Image, Ima
     max_pixel = np.sum(count_array) or 1
     count_array = [f'{val / max_pixel * 100:.2f}%' for val in count_array]
     table = list(zip(labels, list(count_array), area, colors))
+
+    torch.cuda.empty_cache()
 
     return Image.fromarray(original_image), output_image, table
 

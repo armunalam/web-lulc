@@ -12,7 +12,6 @@ model = DPT(
     **{'encoder_size': 'base', 'features': 128, 'out_channels': [96, 192, 384, 768],
        'nclass': 6})
 model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-model.to(device)
 
 unimatch_path = '/opt/models/exp/unimatchv2_0.pth'
 checkpoint = torch.load(
@@ -22,6 +21,9 @@ for k, v in checkpoint['model'].items():
     new_key = k.replace('module.', '')
     new_state_dict[new_key] = v
 model.load_state_dict(new_state_dict)
+
+model = torch.compile(model, backend="inductor", dynamic=False)
+model.to(device)
 
 
 def predict(image: np.ndarray, patch_size: int = 518) -> tuple[Image.Image, Image.Image, list]:
