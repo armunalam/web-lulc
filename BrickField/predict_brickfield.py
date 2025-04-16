@@ -11,17 +11,36 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 model = UNet(n_channels=3, n_classes=2, bilinear=False)
 
-unimatch_path = '/opt/models/exp/brickfield_unet_0.pth'
+# if torch.cuda.device_count() > 1:
+#     print(f"Using {torch.cuda.device_count()} GPUs!")
+#     model = nn.DataParallel(model)
+# model.to(device)
+
+pth_path = '/opt/models/exp/brickfield_unet_0.pth'
 checkpoint = torch.load(
-    unimatch_path, map_location='cpu', weights_only=False)
+    pth_path, map_location='cpu', weights_only=False)
 new_state_dict = {}
 for k, v in checkpoint['model_state_dict'].items():
     new_key = k.replace('module.', '')
     new_state_dict[new_key] = v
 model.load_state_dict(new_state_dict)
 
+# checkpoint = torch.load(unimatch_path, weights_only=False)
+# model.load_state_dict(checkpoint['model_state_dict'])
+
+# Adjust for multi-GPU loading if needed
+# if torch.cuda.device_count() > 1:
+# new_state_dict = {}
+# for key, value in checkpoint["model_state_dict"].items():
+#     new_key = "module." + key if not key.startswith("module.") else key
+#     new_state_dict[new_key] = value
+# model.load_state_dict(new_state_dict)
+# else:
+#     model.load_state_dict(checkpoint["model_state_dict"])
+
 model = torch.compile(model, backend="inductor", dynamic=False)
 model.to(device)
+print('unet_lulc', device)
 
 
 def predict(image: np.ndarray, patch_size: int = 1500) -> tuple[Image.Image, Image.Image, list]:
