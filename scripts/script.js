@@ -1,5 +1,6 @@
 const services = [
   "LULC (Unimatch V2)",
+  "Brickfield (Unimatch V2)",
   "LULC (Unet)",
   "Brickfield"
   // "NDVI",

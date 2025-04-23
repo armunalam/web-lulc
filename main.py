@@ -11,6 +11,7 @@ from bing_map import get_bing_map
 # from predict_lulc import predict as predict_lulc
 from UNet_LULC.predict_lulc_unet import predict as predict_lulc_unet
 from UnimatchV2_LULC.predict_lulc_unimatchv2 import predict as predict_lulc_unimatchv2
+from UnimatchV2_LULC.predict_brickfield_unimatchv2 import predict as predict_brickfield_unimatch
 from BrickField.predict_brickfield import predict as predict_brickfield
 # from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -159,6 +160,57 @@ def pil_to_base64(image: Image.Image, format: str = "PNG") -> str:
 # bing_2023 = None
 # bing_2019 = None
 
+def compare_year(request, min_lon, min_lat, max_lon, max_lat, service):
+    global image_2023
+    global image_2019
+    image_2023 = get_bing_map(min_lat, min_lon, max_lat, max_lon, '2023')
+    image_2019 = get_bing_map(min_lat, min_lon, max_lat, max_lon, '2019')
+    table_2023 = None
+    table_2019 = None
+
+    if True or image_2023 is None or image_2019 is None:
+        if service == 'LULC (Unimatch V2)':
+            input_image_2023, output_image_2023, table_2023 = predict_lulc_unimatchv2(
+                image_2023)
+            input_image_2019, output_image_2019, table_2019 = predict_lulc_unimatchv2(
+                image_2019)
+        elif service == 'Brickfield (Unimatch V2)':
+            input_image_2023, output_image_2023, table_2023 = predict_brickfield_unimatch(
+                image_2023)
+            input_image_2019, output_image_2019, table_2019 = predict_brickfield_unimatch(
+                image_2019)
+        elif service == 'LULC (Unet)':
+            input_image_2023, output_image_2023, table_2023 = predict_lulc_unet(
+                image_2023)
+            input_image_2019, output_image_2019, table_2019 = predict_lulc_unet(
+                image_2019)
+        elif service == 'Brickfield':
+            input_image_2023, output_image_2023, table_2023 = predict_brickfield(
+                image_2023)
+            input_image_2019, output_image_2019, table_2019 = predict_brickfield(
+                image_2019)
+
+        # input_base64_2023 = pil_to_base64(input_image_2023, format='JPEG')
+        # input_base64_2019 = pil_to_base64(input_image_2019, format='JPEG')
+        # output_base64_2023 = pil_to_base64(output_image_2023)
+        # output_base64_2019 = pil_to_base64(output_image_2019)
+
+        return template.TemplateResponse('output_compare.html', {'request': request,
+                                                                 'input_image_data': pil_to_base64(input_image_2023, format='JPEG'),
+                                                                 'output_image_data': pil_to_base64(output_image_2023),
+                                                                 'input_image_data_prev': pil_to_base64(input_image_2019, format='JPEG'),
+                                                                 'output_image_data_prev': pil_to_base64(output_image_2019),
+                                                                 'table': table_2023,
+                                                                 'table_prev': table_2019,
+                                                                 'min_lon': min_lon,
+                                                                 'min_lat': min_lat,
+                                                                 'max_lon': max_lon,
+                                                                 'max_lat': max_lat,
+                                                                 })
+
+    else:
+        print('Error')
+
 
 @app.post('/')
 def submit(request: Request,
@@ -179,6 +231,9 @@ def submit(request: Request,
 
     # image = get_google_map(min_lat, min_lon, max_lat, max_lon)
 
+    if year == 'compare':
+        return compare_year(request, min_lon, min_lat, max_lon, max_lat, service)
+
     image = get_bing_map(min_lat,
                          min_lon, max_lat, max_lon, year)
 
@@ -188,7 +243,10 @@ def submit(request: Request,
         time_start = perf_counter()
         if service == 'LULC (Unimatch V2)':
             input_image, output_image, table = predict_lulc_unimatchv2(image)
-        if service == 'LULC (Unet)':
+        elif service == 'Brickfield (Unimatch V2)':
+            input_image, output_image, table = predict_brickfield_unimatch(
+                image)
+        elif service == 'LULC (Unet)':
             # input_image, output_image = predict_lulc(image)
             input_image, output_image, table = predict_lulc_unet(image)
         elif service == 'Brickfield':

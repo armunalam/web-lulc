@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script> -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css"
+      integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+      crossorigin="anonymous"
+    />
+    <title>Output</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <style>
+        html, body {
+            height: 100%;
+            font-family: sans-serif;
+        }
+        
+        .center {
+            display: flex;
+            justify-content: center;
+            padding-left: 2.25rem;
+            padding-right: 2.25rem;
+            padding-bottom: 2.25rem;
+        }
+
+        .center_t {
+            text-align: center;
+            padding: 0.75rem;
+        }
+        
+        #map {
+            margin-top: -50px;
+            height: 100vh !important;
+            width: 100% !important;
+            /* z-index: -1; */
+        }
+        
+        /* .upper {
+            border: 1px solid grey;
+            z-index: 100;
+            border: 1px solid grey;
+            border-radius: 5px;
+            box-shadow: 0px 0px 5px grey;
+        } */
+         img.server-image {
+            border-radius: 5px;
+            box-shadow: 0px 0px 5px grey;
+         }
+         
+         /* button {
+            margin-top: 0px;
+            border-radius: 10px;
+            padding: 10px;
+            border: 1px solid black;
+            background-color: white;
+            color: black;
+            font-size: 15px;
+         }
+         
+         button:hover, button:active {
+            background-color: black;
+            color: white;
+            cursor: pointer;
+         } */
+         
+         .no-margin {
+            margin: 0px;
+         }
+    </style>
+</head>
+<body>
+    <div class="container-fluid upper">
+
+        <div class="no-margin center" style="padding-bottom: 10px;">
+            <div class="col-md-6 center_t no-margin" style="padding-bottom: 0px">
+                <h1>Input Image and Predicted Mask</h1>
+            </div>
+        </div>
+        <div class="center no-margin">
+            <form class="no-margin" action="" method="get" style="text-align:center">
+                <button class="btn btn-outline-secondary no-margin" type="submit"
+                class="bg-blue-600 rounded-full px-10 py-2 text-white hover:bg-blue-700 hover:shadow-sm transition-all cursor-pointer" 
+            hx-get="/predict">Search Again</button>
+            </form>
+        </div>
+        
+        <div class="row center">
+        <div>
+        {% if table_prev %}  
+        <h1 style="text-align: center;">2019</h1>
+        <div class="center">
+            <table class="table table-bordered w-100">
+                <thead>
+                    <tr>
+                        <th scope="col">Label</th>
+                        <th scope="col">Pixel Percentage</th>
+                        <th scope="col">Area (in square km)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for label, pixel, area, color in table_prev %}
+                    <tr>
+                        <td>{{ label }} <span style="display: block; height: 5px; width: 100%; background-color: rgb{{ color }};"></span></td>
+                        <td>{{ pixel }}</td>
+                        <td>{{ area }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        </div>
+        {% endif %}
+        
+        {% if table %}
+        <div>
+        <h1 style="text-align: center;">2023</h1>
+        <div class="center">
+            <table class="table table-bordered w-100">
+                <thead>
+                    <tr>
+                        <th scope="col">Label</th>
+                        <th scope="col">Pixel Percentage</th>
+                        <th scope="col">Area (in square km)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for label, pixel, area, color in table %}
+                    <tr>
+                        <td>{{ label }} <span style="display: block; height: 5px; width: 100%; background-color: rgb{{ color }};"></span></td>
+                        <td>{{ pixel }}</td>
+                        <td>{{ area }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        </div>
+        {% endif %}
+        </div>
+        
+        <div class="row center">
+            <!-- input image -->
+            <div class="center">
+                <!-- <img src="./imagedata/input_image.png" alt="input image" width="500" height="333"> -->
+                <img class="server-image" src="data:image/png;base64,{{ input_image_data_prev }}" alt="input image" width="500">
+            </div>
+            <!-- output patches -->
+            <div class="center">
+                <img class="server-image" src="data:image/png;base64,{{ input_image_data }}" alt="input image" width="500">
+            </div>
+        </div>
+        <div class="row center">
+            <!-- input image -->
+            <div class="center">
+                <!-- <img src="./imagedata/input_image.png" alt="input image" width="500" height="333"> -->
+                <img class="server-image" src="data:image/png;base64,{{ output_image_data_prev }}" alt="output image" width="500">
+            </div>
+            <!-- output patches -->
+            <div class="center">
+                <img class="server-image" src="data:image/png;base64,{{ output_image_data }}" alt="output image" width="500">
+            </div>
+        </div>
+        <div class="center">
+            <div id="map"></div>
+        </div>
+        <br>
+    </div>
+        
+        
+        
+    <!-- </div> -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Define your bounding box coordinates
+        // const topLeft = { lat: {{ max_lat }}, lng: {{ min_lon }} }; 
+        // const bottomRight = { lat: {{ min_lat }}, lng: {{ max_lon }} }; 
+  
+        const topLeft = [{{ max_lat }}, {{ min_lon }}];
+        const bottomRight = [{{ min_lat }}, {{ max_lon }}];
+
+        const bounds = L.latLngBounds([bottomRight, topLeft]);
+
+        const map = L.map('map', {
+            maxBounds: bounds, // Lock the map into the bounds
+            maxBoundsViscosity: 1.0, // Prevents dragging outside the bounds
+            zoomControl: false, // Disable zoom buttons
+            dragging: false, // Disable dragging
+            scrollWheelZoom: false, // Disable scroll zoom
+            doubleClickZoom: false, // Disable double click zoom
+            boxZoom: false, // Disable shift+drag zoom
+            keyboard: false, // Disable keyboard controls
+            touchZoom: false, // Disable touch zoom
+        }).fitBounds(bounds, {
+            padding: [0, 0],
+            maxZoom: 18, // Optional: prevent zooming in too far
+        });
+        
+        // const center = bounds.getCenter();
+        // const targetZoom = map.getBoundsZoom(bounds, false); // Get the max zoom to fit the bounds
+
+        // map.setView(center, targetZoom);
+
+        // Add the OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Optional rectangle to show the bounding area
+        // L.rectangle(bounds, { color: "#ff0000", weight: 2, fillOpacity: 0.1 }).addTo(map);
+        
+        const world = [
+            [-90, -180], [-90, 180], [90, 180], [90, -180]  // Covers the whole world
+        ];
+        const clipArea = [
+            [topLeft[0], topLeft[1]],
+            [topLeft[0], bottomRight[1]],
+            [bottomRight[0], bottomRight[1]],
+            [bottomRight[0], topLeft[1]]
+        ];
+
+        // Subtract the area you want to show from the world to make a mask
+        const mask = L.polygon([world, clipArea], {
+            color: "white",
+            fillOpacity: 1,
+            stroke: false
+        }).addTo(map);
+        
+        // function adjustMapView() {
+        //     const mapContainer = document.getElementById('map');
+        //     const mapHeight = mapContainer.clientHeight;
+        //     const mapWidth = mapContainer.clientWidth;
+
+        //     // Get the pixel coordinates of the top-left and bottom-right corners of the bounds
+        //     const topLeftPixel = map.latLngToContainerPoint(bounds.getNorthWest());
+        //     const bottomRightPixel = map.latLngToContainerPoint(bounds.getSouthEast());
+
+        //     // Calculate the required zoom level to fit the bounds vertically
+        //     const boundsHeight = bottomRightPixel.y - topLeftPixel.y;
+        //     const zoomDeltaY = Math.log2(mapHeight / boundsHeight);
+
+        //     // Calculate the required zoom level to fit the bounds horizontally
+        //     const boundsWidth = bottomRightPixel.x - topLeftPixel.x;
+        //     const zoomDeltaX = Math.log2(mapWidth / boundsWidth);
+
+        //     // Use the smaller zoom delta to ensure the bounds fit within the canvas
+        //     const zoomDelta = Math.min(zoomDeltaY, zoomDeltaX);
+        //     const targetZoom = map.getZoom() + zoomDelta;
+
+        //     // Calculate the new center to align the top of the bounds with the top of the map
+        //     const centerOffsetY = topLeftPixel.y * Math.pow(2, zoomDelta);
+        //     const newCenter = map.containerPointToLatLng([
+        //         mapWidth / 2,
+        //         mapHeight / 2 + centerOffsetY
+        //     ]);
+
+        //     // Set the map's view to the new center and zoom level
+        //     map.setView(newCenter, targetZoom);
+        // }
+
+        // // Ensure the map container has a defined size
+        // const mapContainer = document.getElementById('map');
+        // if (mapContainer.clientWidth === 0 || mapContainer.clientHeight === 0) {
+        //     console.error("Map container has no size! Ensure the #map element has a defined width and height in CSS.");
+        // } else {
+        //     console.log("Map container size:", mapContainer.clientWidth, "x", mapContainer.clientHeight);
+        // }
+
+        // // Adjust the map view after a small delay to ensure the map is fully initialized
+        // setTimeout(adjustMapView, 100);
+    </script>
+</body>
+</html>
