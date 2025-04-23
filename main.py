@@ -23,110 +23,7 @@ from torch import nn
 from UNet_LULC.UNet.unet.unet_model import UNet as UNet
 
 from time import perf_counter
-# from BrickField.UNet.unet.unet_model import UNet as BrickField
 
-
-# input_tif_locations = None
-
-
-# def load_raster():
-
-# device = None
-# unet = None
-# brickfield = None
-
-
-# async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-#     global device
-#     global unet
-#     global brickfield
-
-#     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-#     unet = UNet(n_channels=3, n_classes=6, bilinear=False)
-
-#     # Wrap the unet with DataParallel to use multiple GPUs
-#     if torch.cuda.device_count() > 1:
-#         # print(f"Using {torch.cuda.device_count()} GPUs!")
-#         unet = nn.DataParallel(unet)
-
-#     unet.to(device)
-
-#     checkpoint = torch.load(
-#         'UNet_LULC/checkpoints/best_model.pth', weights_only=False)
-#     # Adjust for multi-GPU loading if needed
-#     if torch.cuda.device_count() > 1:
-#         new_state_dict = {}
-#         for key, value in checkpoint["model_state_dict"].items():
-#             new_key = "module." + \
-#                 key if not key.startswith("module.") else key
-#             new_state_dict[new_key] = value
-#         unet.load_state_dict(new_state_dict)
-#     else:
-#         unet.load_state_dict(checkpoint["model_state_dict"])
-
-#     unet.eval()
-
-#     brickfield = BrickField(n_channels=3, n_classes=2, bilinear=False)
-#     if torch.cuda.device_count() > 1:
-#         # print(f"Using {torch.cuda.device_count()} GPUs!")
-#         brickfield = nn.DataParallel(brickfield)
-#     brickfield.to(device)
-
-#     checkpoint = torch.load(
-#         'BrickField/checkpoints/best_model.pth', weights_only=False)
-
-#     if torch.cuda.device_count() > 1:
-#         new_state_dict = {}
-#         for key, value in checkpoint["model_state_dict"].items():
-#             new_key = "module." + key if not key.startswith("module.") else key
-#             new_state_dict[new_key] = value
-#         brickfield.load_state_dict(new_state_dict)
-#     else:
-#         brickfield.load_state_dict(checkpoint["model_state_dict"])
-
-#     brickfield.eval()
-
-#     yield  # The app runs here
-
-# #     # Cleanup: Close dataset and MemoryFile
-#     if unet:
-#         unet.close()
-#     if brickfield:
-#         brickfield.close()
-
-# async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-#     # load_raster()
-#     """Load the raster dataset into memory once."""
-#     # global bing_2023
-#     # global bing_2019
-#     global input_tif_locations
-#     # image_path = "large_image.tif"  # Change this to your actual file path
-
-#     # Open the image once and store it in memory
-#     with rasterio.open('/home/skeptic/bd/Bangladesh_BING.tif') as src:
-#         memfile = rasterio.MemoryFile()
-#         with memfile.open(**src.profile) as dst:
-#             dst.write(src.read())  # Copy all bands
-#         bing_2023 = memfile.open()  # Reopen in-memory dataset
-
-#     with rasterio.open('/opt/models/dhaka_input.tif') as src:
-#         memfile = rasterio.MemoryFile()
-#         with memfile.open(**src.profile) as dst:
-#             dst.write(src.read())  # Copy all bands
-#         bing_2019 = memfile.open()  # Reopen in-memory dataset
-
-#     input_tif_locations = {
-#         '2023': bing_2023,
-#         # '2019': 'bing_rgb/dhaka.tif',
-#         '2019': bing_2019,
-#     }
-
-#     yield  # The app runs here
-
-#     # Cleanup: Close dataset and MemoryFile
-#     if input_tif_locations:
-#         input_tif_locations.close()
 
 app = FastAPI()
 # app = FastAPI(lifespan=lifespan)
@@ -153,12 +50,6 @@ def pil_to_base64(image: Image.Image, format: str = "PNG") -> str:
     img_io.seek(0)
     return base64.b64encode(img_io.getvalue()).decode("utf-8")
 
-
-# @app.on_event("startup")
-# def startup_event():
-
-# bing_2023 = None
-# bing_2019 = None
 
 def compare_year(request, min_lon, min_lat, max_lon, max_lat, service):
     global image_2023
@@ -287,13 +178,3 @@ def submit(request: Request,
                                                      'max_lat': max_lat,
                                                      'table': table,
                                                      })
-    # {"request": request,  "predict_result": predict_result})
-
-    # @app.post('/')
-    # async def home(request: Request, topLeftLattitude: float = Form(...), topLeftLongitude: float = Form()):
-    #     print(topLeftLattitude, topLeftLongitude)
-    #     data = {
-    #         't_left_lang': topLeftLattitude,
-    #         't_left_long': topLeftLongitude
-    #     }
-    #     return template.TemplateResponse('index.html', {'request': request, 'data': data})
