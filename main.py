@@ -3,6 +3,7 @@ import requests
 from fastapi import FastAPI, File, UploadFile, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 import io
 import base64
 from PIL import Image
@@ -23,6 +24,7 @@ from torch import nn
 from UNet_LULC.UNet.unet.unet_model import UNet as UNet
 
 from time import perf_counter
+import pandas as pd
 
 
 app = FastAPI()
@@ -36,6 +38,12 @@ app.mount('/scripts', StaticFiles(directory='scripts'), name='scripts')
 app.mount('/styles', StaticFiles(directory='styles'), name='styles')
 
 template = Jinja2Templates(directory='templates')    #
+
+
+district_data = pd.read_json('data/adm2.json')  # Replace with your actual file
+district_data.set_index(['district'], inplace=True)
+upazila_data = pd.read_json('data/adm3.json')  # Replace with your actual file
+upazila_data.set_index(['district', 'upazila'], inplace=True)
 
 
 @app.get('/')
@@ -59,7 +67,7 @@ def compare_year(request, min_lon, min_lat, max_lon, max_lat, service):
     table_2023 = None
     table_2019 = None
 
-    if True or image_2023 is None or image_2019 is None:
+    if image_2023.any() or image_2019.any():
         if service == 'LULC (Unimatch V2)':
             input_image_2023, output_image_2023, table_2023 = predict_lulc_unimatchv2(
                 image_2023)
@@ -105,17 +113,60 @@ def compare_year(request, min_lon, min_lat, max_lon, max_lat, service):
 
 @app.post('/')
 def submit(request: Request,
-           min_lat: float = Form(...),
-           min_lon: float = Form(...),
-           max_lat: float = Form(...),
-           max_lon: float = Form(...),
            service: str = Form(...),
-           year: str = Form(...)):
+           year: str = Form(...),
+           selection: str = Form(...),
+           min_lat: str = Form(...),
+           min_lon: str = Form(...),
+           max_lat: str = Form(...),
+           max_lon: str = Form(...),
+           district: str = Form(...),
+           upazila: str = Form(...)):
+
+    print(selection)
+
+    if selection == 'admin':
+        if district and upazila:
+            key = (district, upazila)
+
+            if key in upazila_data.index:
+                min_lon, min_lat, max_lon, max_lat = tuple(
+                    upazila_data.loc[key])
+                print(district, upazila, min_lon, min_lat, max_lon, max_lat)
+                # return template.TemplateResponse('index.html', {'request': request})
+            else:
+                print("Upazila not found.")
+                # return template.TemplateResponse('index.html', {'request': request})
+                return HTMLResponse(content='<h1>Upazila not found.</h1>', status_code=200)
+        elif district:
+            # return HTMLResponse(content='<h1>Upazila not selected.</h1>', status_code=200)
+            key = (district)
+            # print(district_data)
+            # print(key)
+
+            if key in district_data.index:
+                min_lon, min_lat, max_lon, max_lat = tuple(
+                    district_data.loc[key])
+                print(district, min_lon, min_lat, max_lon, max_lat)
+                # return template.TemplateResponse('index.html', {'request': request})
+            else:
+                print("District not found.")
+                # return template.TemplateResponse('index.html', {'request': request})
+                return HTMLResponse(content='<h1>District not found.</h1>', status_code=200)
+    elif min_lon and min_lat and max_lon and max_lat:
+        min_lon, min_lat = float(min_lon), float(min_lat)
+        max_lon, max_lat = float(max_lon), float(max_lat)
+        if min_lon > max_lon:
+            min_lon, max_lon = max_lon, min_lon
+        if min_lat > max_lat:
+            min_lat, max_lat = max_lat, min_lat
+    else:
+        print("Invalid coordinates provided.")
+        # return template.TemplateResponse('index.html', {'request': request})
+        return HTMLResponse(content='<h1>Invalid coordinates provided.</h1>', status_code=200)
 
     # print(service)
 
-    min_lon, min_lat = float(min_lon), float(min_lat)
-    max_lon, max_lat = float(max_lon), float(max_lat)
     # print(min_lat, min_lon, max_lat, max_lon)
     # min_lon, min_lat = 90.30638136, 23.78550914
     # max_lon, max_lat = 90.53348936, 23.88819931
@@ -125,13 +176,16 @@ def submit(request: Request,
     if year == 'compare':
         return compare_year(request, min_lon, min_lat, max_lon, max_lat, service)
 
+    print('Image fetching started')
     image = get_bing_map(min_lat,
                          min_lon, max_lat, max_lon, year)
+    print('Image fetching completed')
 
     table = None
 
     if image is not None:
         time_start = perf_counter()
+        print('Image prediction started')
         if service == 'LULC (Unimatch V2)':
             input_image, output_image, table = predict_lulc_unimatchv2(image)
         elif service == 'Brickfield (Unimatch V2)':
@@ -142,6 +196,7 @@ def submit(request: Request,
             input_image, output_image, table = predict_lulc_unet(image)
         elif service == 'Brickfield':
             input_image, output_image, table = predict_brickfield(image)
+        print('Image prediction completed')
         time_stop = perf_counter()
         print(f'Time elapsed during inference: {time_stop - time_start}')
 
