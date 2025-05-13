@@ -9,7 +9,8 @@ def get_bing_map(min_lat: float, min_lon: float, max_lat: float, max_lon: float,
     # input_tif = 'bing_rgb/dhaka.tif'
     # input_tif = '/home/skeptic/bd/Bangladesh_BING.tif'
     input_tif_locations = {
-        '2023': '/home/skeptic/bd/Bangladesh_BING.tif',
+        # '2023': '/home/skeptic/bd/Bangladesh_BING.tif',
+        '2023': '/opt/models/Bangladesh_BING_2023.tif',
         # '2019': 'bing_rgb/dhaka.tif',
         # '2019': '/opt/models/dhaka_input.tif',
         '2019': '/opt/models/BD_2019_Full.tif',
