@@ -11,11 +11,13 @@ COLORS = {
     'lulc': [(0, 0, 0), (0, 255, 0), (0, 0, 255),
              (0, 255, 255), (255, 0, 0), (255, 255, 0)],
     'brickfield': [(0, 0, 0), (255, 0, 0)],
+    '3-change': [(0, 0, 0), (115, 119, 125), (130, 113, 96), (255, 255, 255)]
 }
 
 n_class = {
     'lulc': 6,
-    'brickfield': 2
+    'brickfield': 2,
+    '3-change': 4,
 }
 
 
@@ -168,6 +170,42 @@ def unpatchify(patches: np.ndarray, original_size: tuple[int, int]) -> np.ndarra
 
     # Create an empty array to hold the reconstructed (possibly padded) image
     reconstructed = np.zeros((full_height, full_width, 3), dtype=patches.dtype)
+
+    # Place each patch back into the image
+    for i in range(num_patches_vertical):
+        for j in range(num_patches_horizontal):
+            y_start = i * patch_size
+            x_start = j * patch_size
+            reconstructed[y_start:y_start + patch_size,
+                          x_start:x_start + patch_size] = patches[i, j, 0]
+
+    # Remove any padding to match the original image size
+    reconstructed_cropped = reconstructed[:original_height, :original_width]
+
+    return reconstructed_cropped
+
+
+def unpatchify_one_channel(patches: np.ndarray, original_size: tuple[int, int]) -> np.ndarray:
+    """
+    Reconstructs the original grayscale image from patches.
+
+    Args:
+        patches (numpy.ndarray): Array of patches with shape
+            (num_patches_vertical, num_patches_horizontal, 1, patch_size, patch_size)
+        original_size (tuple[int, int]): (width, height) of the original image.
+
+    Returns:
+        numpy.ndarray: Reconstructed grayscale image.
+    """
+    original_width, original_height = original_size
+    num_patches_vertical, num_patches_horizontal, _, patch_size, _ = patches.shape
+
+    # Calculate full reconstructed size with padding
+    full_height = num_patches_vertical * patch_size
+    full_width = num_patches_horizontal * patch_size
+
+    # Create an empty array to hold the reconstructed (possibly padded) image
+    reconstructed = np.zeros((full_height, full_width), dtype=patches.dtype)
 
     # Place each patch back into the image
     for i in range(num_patches_vertical):

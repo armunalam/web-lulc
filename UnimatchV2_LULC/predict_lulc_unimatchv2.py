@@ -4,7 +4,7 @@ import torchvision
 import numpy as np
 from PIL import Image
 from UnimatchV2_LULC.model.semseg.dpt import DPT
-from utils.utils import make_patches, unpatchify, decode_segmap, LABELS, COLORS
+from utils.utils import make_patches, unpatchify, decode_segmap, LABELS, COLORS, unpatchify_one_channel
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -26,7 +26,7 @@ model = torch.compile(model, backend="inductor", dynamic=False)
 model.to(device)
 
 
-def predict(image: np.ndarray, patch_size: int = 518) -> tuple[Image.Image, Image.Image, list]:
+def predict(image: np.ndarray, patch_size: int = 518, compare=False) -> tuple[Image.Image, Image.Image, list]:
     image = image[:, :, :3]
     original_image = image
 
@@ -57,14 +57,20 @@ def predict(image: np.ndarray, patch_size: int = 518) -> tuple[Image.Image, Imag
         count_temp[unique] = counter
         count_array += count_temp
 
-        output = decode_segmap(output)
-        output = Image.fromarray(output)
+        # output = decode_segmap(output)
+        # output = Image.fromarray(output)
         output_images.append(output)
 
     output_images = np.stack(output_images, axis=0).reshape(
-        size_y, size_x, 1, p_s_1, p_s_2, channels)
+        size_y, size_x, 1, p_s_1, p_s_2)
+    # output_images = np.stack(output_images, axis=0).reshape(
+    #     size_y, size_x, 1, p_s_1, p_s_2, channels)
 
-    output_image = unpatchify(output_images, image_size)
+    output_image = unpatchify_one_channel(output_images, image_size)
+    if compare:
+        output_image_raw = output_image
+
+    output_image = decode_segmap(output_image)
     output_image = Image.fromarray(output_image)
 
     labels = LABELS.get('lulc')
@@ -75,6 +81,9 @@ def predict(image: np.ndarray, patch_size: int = 518) -> tuple[Image.Image, Imag
     table = list(zip(labels, list(count_array), area, colors))
 
     torch.cuda.empty_cache()
+
+    if compare:
+        return Image.fromarray(original_image), output_image, table, output_image_raw
 
     return Image.fromarray(original_image), output_image, table
 

@@ -1,4 +1,5 @@
 import math
+import numpy as np
 import requests
 from fastapi import FastAPI, File, UploadFile, Request, Form
 from fastapi.templating import Jinja2Templates
@@ -22,6 +23,7 @@ import torch
 from torch import nn
 
 from UNet_LULC.UNet.unet.unet_model import UNet as UNet
+from utils.utils import n_class as n_class_dict, decode_segmap, LABELS
 
 from time import perf_counter
 import pandas as pd
@@ -51,7 +53,7 @@ def home(request: Request):
     return template.TemplateResponse('index.html', {'request': request})
 
 
-def pil_to_base64(image: Image.Image, format: str = "PNG") -> str:
+def pil_to_base64(image: Image.Image, format: str = "PNG") -> bytes:
     """Convert a PIL Image to a Base64 string."""
     img_io = io.BytesIO()
     image.save(img_io, format=format)
@@ -59,20 +61,65 @@ def pil_to_base64(image: Image.Image, format: str = "PNG") -> str:
     return base64.b64encode(img_io.getvalue()).decode("utf-8")
 
 
+def find_changes(old_image: np.ndarray, new_image: np.ndarray, n_class: int = 6) -> list[tuple[str, bytes]]:
+    class_wise_change = [
+        np.zeros(old_image.shape, dtype=np.uint8) for _ in range(n_class - 1)]
+
+    for i in range(n_class - 1):
+        j = i + 1
+        # had the class before but not anymore
+        had = (old_image == j) & (new_image != j)
+        # had the class before and still has it
+        same = (old_image == j) & (new_image == j)
+        # has the class now but not before
+        new = (old_image != j) & (new_image == j)
+
+        class_wise_change[i][had] = 1
+        class_wise_change[i][same] = 2
+        class_wise_change[i][new] = 3
+
+        class_wise_change[i] = pil_to_base64(Image.fromarray(decode_segmap(
+            class_wise_change[i], service='3-change')))
+
+    class_wise_changes = zip(LABELS.get('lulc'), class_wise_change)
+
+    return class_wise_changes
+
+
 def compare_year(request, min_lon, min_lat, max_lon, max_lat, service):
     global image_2023
     global image_2019
-    image_2023 = get_bing_map(min_lat, min_lon, max_lat, max_lon, '2023')
-    image_2019 = get_bing_map(min_lat, min_lon, max_lat, max_lon, '2019')
+    image_2023 = Image.fromarray(get_bing_map(
+        min_lat, min_lon, max_lat, max_lon, '2023'))
+    image_2019 = Image.fromarray(get_bing_map(
+        min_lat, min_lon, max_lat, max_lon, '2019'))
+    print('Size 2019:', image_2019.size)
+    print('Size 2023:', image_2023.size)
+    if image_2023.size[1] < image_2019.size[1]:
+        image_2023 = image_2023.resize(
+            (image_2019.size[0], image_2019.size[1]), Image.LANCZOS)
+    elif image_2019.size[1] < image_2023.size[1]:
+        image_2019 = image_2019.resize(
+            (image_2023.size[0], image_2023.size[1]), Image.LANCZOS)
+    print('After resize')
+    print('Size 2019:', image_2019.size)
+    print('Size 2023:', image_2023.size)
+    image_2023 = np.asarray(image_2023)
+    image_2019 = np.asarray(image_2019)
     table_2023 = None
     table_2019 = None
+    output_image_2023_raw = None
+    output_image_2019_raw = None
+    n_class = 0
 
     if image_2023.any() or image_2019.any():
         if service == 'LULC (Unimatch V2)':
-            input_image_2023, output_image_2023, table_2023 = predict_lulc_unimatchv2(
-                image_2023)
-            input_image_2019, output_image_2019, table_2019 = predict_lulc_unimatchv2(
-                image_2019)
+            input_image_2023, output_image_2023, table_2023, output_image_2023_raw = predict_lulc_unimatchv2(
+                image_2023, compare=True)
+            input_image_2019, output_image_2019, table_2019, output_image_2019_raw = predict_lulc_unimatchv2(
+                image_2019, compare=True)
+            n_class = n_class_dict.get('lulc')
+
         elif service == 'Brickfield (Unimatch V2)':
             input_image_2023, output_image_2023, table_2023 = predict_brickfield_unimatch(
                 image_2023)
@@ -89,10 +136,9 @@ def compare_year(request, min_lon, min_lat, max_lon, max_lat, service):
             input_image_2019, output_image_2019, table_2019 = predict_brickfield(
                 image_2019)
 
-        # input_base64_2023 = pil_to_base64(input_image_2023, format='JPEG')
-        # input_base64_2019 = pil_to_base64(input_image_2019, format='JPEG')
-        # output_base64_2023 = pil_to_base64(output_image_2023)
-        # output_base64_2019 = pil_to_base64(output_image_2019)
+        if output_image_2019_raw.any() and output_image_2023_raw.any():
+            class_wise_changes = find_changes(output_image_2019_raw,
+                                              output_image_2023_raw, n_class)
 
         return template.TemplateResponse('output_compare.html', {'request': request,
                                                                  'input_image_data': pil_to_base64(input_image_2023, format='JPEG'),
@@ -105,6 +151,7 @@ def compare_year(request, min_lon, min_lat, max_lon, max_lat, service):
                                                                  'min_lat': min_lat,
                                                                  'max_lon': max_lon,
                                                                  'max_lat': max_lat,
+                                                                 'class_wise_changes': class_wise_changes,
                                                                  })
 
     else:

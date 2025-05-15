@@ -73,6 +73,10 @@
          .no-margin {
             margin: 0px;
          }
+         
+         .grid-box {
+            gap: 4.5rem;
+         }
     </style>
 </head>
 <body>
@@ -167,6 +171,25 @@
                 <img class="server-image" src="data:image/png;base64,{{ output_image_data }}" alt="output image" width="500">
             </div>
         </div>
+        
+        <h1 style="text-align: center;">Class-wise Change</h1>
+        <div class="row center grid-box">
+            <div>Not anymore <span style="display: block; border: 1px black solid; height: 10px; width: 5.8rem; background-color: rgb(115, 119, 125);"></span></div>
+            <div>Unchanged <span style="display: block; border: 1px black solid; height: 10px; width: 5.8rem; background-color: rgb(130, 113, 96);"></span></div>
+            <div>New <span style="display: block; border: 1px black solid; height: 10px; width: 5.8rem; background-color: rgb(255, 255, 255);"></span></div>
+        </div>
+        <div class="row center grid-box">
+            <!-- input image -->
+            {% for label, class_wise_change in class_wise_changes %}
+                <div>
+                    <h2 style="text-align: center;">{{ label }}</h2>
+                    <!-- <img src="./imagedata/input_image.png" alt="input image" width="500" height="333"> -->
+                    <img class="server-image" src="data:image/png;base64,{{ class_wise_change }}" alt="output image" width="500">
+                </div>
+            {% endfor %}
+        </div>
+            
+
         <div class="center">
             <div id="map"></div>
         </div>
