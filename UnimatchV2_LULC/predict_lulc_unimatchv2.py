@@ -54,7 +54,7 @@ def predict(image: np.ndarray, patch_size: int = 518, compare=False) -> tuple[Im
 
         unique, counter = np.unique(output, return_counts=True)
         count_temp = np.zeros(6, dtype=np.int_)
-        count_temp[unique] = counter
+        count_temp[unique] = counter # Unnecesary? Added to ensure the order of the classes, but not sure if it is needed
         count_array += count_temp
 
         # output = decode_segmap(output)
@@ -71,7 +71,7 @@ def predict(image: np.ndarray, patch_size: int = 518, compare=False) -> tuple[Im
         output_image_raw = output_image
 
     output_image = decode_segmap(output_image)
-    output_image = Image.fromarray(output_image)
+    output_image = Image.fromarray(output_image, mode='RGBA')
 
     labels = LABELS.get('lulc')
     colors = [str(color) for color in COLORS.get('lulc')[1:]]

@@ -7,17 +7,29 @@ LABELS = {
     'brickfield': ['Non-Brickfield Area', 'Brickfield']
 }
 
+color_light, color_mid, color_dark = 0.4, 1, 1
+
 COLORS = {
     'lulc': [(0, 0, 0), (0, 255, 0), (0, 0, 255),
              (0, 255, 255), (255, 0, 0), (255, 255, 0)],
+    '3-change': [(0, 0, 0, color_dark), (0, 255, 0, color_dark), (0, 0, 255, color_dark),
+             (0, 255, 255, color_dark), (255, 0, 0, color_dark), (255, 255, 0, color_dark),
+             (0, 0, 0, color_light), (0, 255, 0, color_light), (0, 0, 255, color_light),
+             (0, 255, 255, color_light), (255, 0, 0, color_light), (255, 255, 0, color_light),
+            #  (0, 0, 0, color_mid), (0, 255, 0, color_mid), (0, 0, 255, color_mid),
+            #  (0, 255, 255, color_mid), (255, 0, 0, color_mid), (255, 255, 0, color_mid)],
+            #  (115, 119, 125, color_mid), (115, 119, 125, color_mid), (115, 119, 125, color_mid),
+            #  (115, 119, 125, color_mid), (115, 119, 125, color_mid), (115, 119, 125, color_mid)],
+             (255, 255, 255, color_mid), (255, 255, 255, color_mid), (255, 255, 255, color_mid),
+             (255, 255, 255, color_mid), (255, 255, 255, color_mid), (255, 255, 255, color_mid)],
     'brickfield': [(0, 0, 0), (255, 0, 0)],
-    '3-change': [(0, 0, 0), (115, 119, 125), (130, 113, 96), (255, 255, 255)]
+    # '3-change': [(0, 0, 0), (115, 119, 125), (130, 113, 96), (255, 255, 255)]
 }
 
 n_class = {
     'lulc': 6,
     'brickfield': 2,
-    '3-change': 4,
+    '3-change': 18,
 }
 
 
@@ -228,12 +240,17 @@ def decode_segmap(image: np.ndarray, service='lulc') -> np.ndarray:
     r = np.zeros_like(image).astype(np.uint8)
     g = np.zeros_like(image).astype(np.uint8)
     b = np.zeros_like(image).astype(np.uint8)
+    a = np.zeros_like(image).astype(np.uint8)
 
     for l in range(0, nc):
         idx = image == l
         r[idx] = label_colors[l, 0]
         g[idx] = label_colors[l, 1]
         b[idx] = label_colors[l, 2]
+        if label_colors.shape[1] == 4:
+            a[idx] = label_colors[l, 3] * 255
+        else:
+            a[idx] = 255
 
-    rgb = np.stack([r, g, b], axis=2)
+    rgb = np.stack([r, g, b, a], axis=2)
     return rgb
