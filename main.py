@@ -62,42 +62,46 @@ def pil_to_base64(image: Image.Image, format: str = "PNG") -> bytes:
 
 
 def find_changes(old_image: np.ndarray, new_image: np.ndarray, n_class: int = 6, old_sat_image=None) -> list[tuple[str, bytes]]:
-    class_wise_change = [
-        np.zeros(old_image.shape, dtype=np.uint8) for _ in range(n_class - 1)]
     if n_class == 6:
+        class_wise_change = [
+            np.zeros(old_image.shape, dtype=np.uint8) for _ in range(n_class - 1)]
         builtup_change = np.zeros(old_image.shape, dtype=np.uint8)
     if n_class == 2:
         brickfield_change = np.zeros(old_image.shape, dtype=np.uint8)
-
-    for i in range(n_class - 1):
-        j = i + 1
-        # had the class before but not anymore
-        had = (old_image == j) & (new_image != j)
-        # had the class before and still has it
-        same = (old_image == j) & (new_image == j)
-        # has the class now but not before
-        new = (old_image != j) & (new_image == j)
-        
-        if n_class == 2:
-            j = 4
-
-        class_wise_change[i][had] = j + n_class
-        class_wise_change[i][same] = j
-        class_wise_change[i][new] = j + n_class * 2
-
-        class_wise_change[i] = pil_to_base64(Image.fromarray(decode_segmap(
-            class_wise_change[i], service='3-change'), mode='RGBA'))
-            
+    
     if n_class == 6:
-        had = (old_image == 4) & (new_image != 4)
-        same = (old_image == 4) & (new_image == 4)
-        new = (old_image != 4) & (new_image == 4)
+        for i in range(n_class - 1):
+            j = i + 1
+            # had the class before but not anymore
+            had = (old_image == j) & (new_image != j)
+            # had the class before and still has it
+            same = (old_image == j) & (new_image == j)
+            # has the class now but not before
+            new = (old_image != j) & (new_image == j)
+            
+            if n_class == 2:
+                j = 4
 
-        builtup_change[had] = 0
-        builtup_change[same] = 4
-        builtup_change[new] = old_image[new]
-        builtup_change = pil_to_base64(Image.fromarray(decode_segmap(
-            builtup_change, service='lulc'), mode='RGBA'))
+            # class_wise_change[i][had] = j + n_class
+            # class_wise_change[i][same] = j
+            # class_wise_change[i][new] = j + n_class * 2
+            class_wise_change[i][had] = j + n_class
+            class_wise_change[i][same] = j + n_class * 2
+            class_wise_change[i][new] = old_image[new]
+
+            class_wise_change[i] = pil_to_base64(Image.fromarray(decode_segmap(
+                class_wise_change[i], service='3-change'), mode='RGBA'))
+            
+    # if n_class == 6:
+        # had = (old_image == 4) & (new_image != 4)
+        # same = (old_image == 4) & (new_image == 4)
+        # new = (old_image != 4) & (new_image == 4)
+
+        # builtup_change[had] = 0
+        # builtup_change[same] = 4
+        # builtup_change[new] = old_image[new]
+        # builtup_change = pil_to_base64(Image.fromarray(decode_segmap(
+        #     builtup_change, service='lulc'), mode='RGBA'))
         
     if n_class == 2:
         had = (old_image == 1) & (new_image != 1)
@@ -106,7 +110,7 @@ def find_changes(old_image: np.ndarray, new_image: np.ndarray, n_class: int = 6,
         
         _, _, _, output_image = predict_lulc_unimatchv2(old_sat_image, compare=True)
 
-        brickfield_change[had] = 0
+        brickfield_change[had] = 6
         brickfield_change[same] = 12
         brickfield_change[new] = output_image[new]
         brickfield_change = pil_to_base64(Image.fromarray(decode_segmap(
@@ -115,13 +119,15 @@ def find_changes(old_image: np.ndarray, new_image: np.ndarray, n_class: int = 6,
     # service_type = {6: 'lulc', 2: 'brickfield'}
     labels = LABELS.get('lulc') if n_class == 6 else [''] * n_class
 
-    class_wise_changes = zip(labels, class_wise_change)
     
     if n_class == 6:
-        return class_wise_changes, builtup_change, 'Built-Up Change'
+        class_wise_changes = zip(labels, class_wise_change)
+        # return class_wise_changes, builtup_change, 'Built-Up Change'
+        return class_wise_changes
 
     if n_class == 2:
-        return class_wise_changes, brickfield_change, 'Brickfield Change'
+        # return class_wise_changes, brickfield_change, 'Brickfield Change'
+        return brickfield_change, 'Brickfield Change'
         
     return class_wise_changes
 
@@ -150,7 +156,10 @@ def compare_year(request, min_lon, min_lat, max_lon, max_lat, service):
     table_2019 = None
     output_image_2023_raw = None
     output_image_2019_raw = None
-    builtup_changes = None
+    class_wise_changes = None
+    specific_class_changes = None
+    change_title = None
+    # builtup_changes = None
     # n_class = 0
 
     if image_2023.any() or image_2019.any():
@@ -160,15 +169,19 @@ def compare_year(request, min_lon, min_lat, max_lon, max_lat, service):
             input_image_2019, output_image_2019, table_2019, output_image_2019_raw = predict_lulc_unimatchv2(
                 image_2019, compare=True)
             # n_class = n_class_dict.get('lulc')
-            class_wise_changes, specific_class_changes, change_title = find_changes(output_image_2019_raw,
+            class_wise_changes = find_changes(output_image_2019_raw,
                                             output_image_2023_raw, 6)
+            # class_wise_changes, specific_class_changes, change_title = find_changes(output_image_2019_raw,
+            #                                 output_image_2023_raw, 6)
         elif service == 'Brickfield (Unimatch V2)':
             input_image_2023, output_image_2023, table_2023, output_image_2023_raw = predict_brickfield_unimatch(
                 image_2023, compare=True)
             input_image_2019, output_image_2019, table_2019, output_image_2019_raw = predict_brickfield_unimatch(
                 image_2019, compare=True)
-            class_wise_changes, specific_class_changes, change_title = find_changes(output_image_2019_raw,
+            specific_class_changes, change_title = find_changes(output_image_2019_raw,
                                             output_image_2023_raw, 2, old_sat_image=image_2019)
+            # class_wise_changes, specific_class_changes, change_title = find_changes(output_image_2019_raw,
+            #                                 output_image_2023_raw, 2, old_sat_image=image_2019)
         elif service == 'LULC (Unet)':
             input_image_2023, output_image_2023, table_2023 = predict_lulc_unet(
                 image_2023)

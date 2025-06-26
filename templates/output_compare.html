@@ -172,12 +172,14 @@
             </div>
         </div>
         
+        {% if class_wise_changes %}
         <h1 style="text-align: center;">Class-wise Change</h1>
         {# <div class="row center grid-box">
             <div>Not anymore <span style="display: block; border: 1px black solid; height: 10px; width: 5.8rem; background-color: rgb(115, 119, 125);"></span></div>
             <div>Unchanged <span style="display: block; border: 1px black solid; height: 10px; width: 5.8rem; background-color: rgb(130, 113, 96);"></span></div>
             <div>New <span style="display: block; border: 1px black solid; height: 10px; width: 5.8rem; background-color: rgb(255, 255, 255);"></span></div>
         </div> #}
+        
         <div class="row center grid-box">
             <!-- input image -->
             {% for label, class_wise_change in class_wise_changes %}
@@ -188,6 +190,7 @@
                 </div>
             {% endfor %}
         </div>
+        {% endif %}
         
         {% if specific_class_changes %}
         <div class="row center">
@@ -196,7 +199,7 @@
                     <img class="server-image" src="data:image/png;base64,{{ specific_class_changes }}" alt="output image" width="500">
                 </div>
         </div>
-        {% endif %}    
+        {% endif %}
 
         <div class="center">
             <div id="map"></div>

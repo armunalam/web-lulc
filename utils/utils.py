@@ -7,19 +7,19 @@ LABELS = {
     'brickfield': ['Non-Brickfield Area', 'Brickfield']
 }
 
-color_light, color_mid, color_dark = 0.4, 1, 1
+color_light, color_mid, color_dark = 1, 1, 1
 
 COLORS = {
     'lulc': [(0, 0, 0), (0, 255, 0), (0, 0, 255),
              (0, 255, 255), (255, 0, 0), (255, 255, 0)],
     '3-change': [(0, 0, 0, color_dark), (0, 255, 0, color_dark), (0, 0, 255, color_dark),
              (0, 255, 255, color_dark), (255, 0, 0, color_dark), (255, 255, 0, color_dark),
-             (0, 0, 0, color_light), (0, 255, 0, color_light), (0, 0, 255, color_light),
-             (0, 255, 255, color_light), (255, 0, 0, color_light), (255, 255, 0, color_light),
+            #  (0, 0, 0, color_light), (0, 255, 0, color_light), (0, 0, 255, color_light),
+            #  (0, 255, 255, color_light), (255, 0, 0, color_light), (255, 255, 0, color_light),
             #  (0, 0, 0, color_mid), (0, 255, 0, color_mid), (0, 0, 255, color_mid),
             #  (0, 255, 255, color_mid), (255, 0, 0, color_mid), (255, 255, 0, color_mid)],
-            #  (115, 119, 125, color_mid), (115, 119, 125, color_mid), (115, 119, 125, color_mid),
-            #  (115, 119, 125, color_mid), (115, 119, 125, color_mid), (115, 119, 125, color_mid)],
+             (115, 119, 125, color_light), (115, 119, 125, color_light), (115, 119, 125, color_light),
+             (115, 119, 125, color_light), (115, 119, 125, color_light), (115, 119, 125, color_light),
              (255, 255, 255, color_mid), (255, 255, 255, color_mid), (255, 255, 255, color_mid),
              (255, 255, 255, color_mid), (255, 255, 255, color_mid), (255, 255, 255, color_mid)],
     'brickfield': [(0, 0, 0), (255, 0, 0)],
