@@ -23,7 +23,7 @@ import torch
 from torch import nn
 
 from UNet_LULC.UNet.unet.unet_model import UNet as UNet
-from utils.utils import n_class as n_class_dict, decode_segmap, LABELS
+from utils.utils import n_class as n_class_dict, decode_segmap, LABELS, change_3, generate_stripes, mask_to_rgb_with_stripes
 
 from time import perf_counter
 import pandas as pd
@@ -61,7 +61,7 @@ def pil_to_base64(image: Image.Image, format: str = "PNG") -> bytes:
     return base64.b64encode(img_io.getvalue()).decode("utf-8")
 
 
-def find_changes(old_image: np.ndarray, new_image: np.ndarray, n_class: int = 6, old_sat_image=None) -> list[tuple[str, bytes]]:
+def find_changes(old_image: np.ndarray, new_image: np.ndarray, n_class: int = 6, old_sat_image=None, new_sat_image=None) -> list[tuple[str, bytes]]:
     if n_class == 6:
         class_wise_change = [
             np.zeros(old_image.shape, dtype=np.uint8) for _ in range(n_class - 1)]
@@ -85,12 +85,17 @@ def find_changes(old_image: np.ndarray, new_image: np.ndarray, n_class: int = 6,
             # class_wise_change[i][had] = j + n_class
             # class_wise_change[i][same] = j
             # class_wise_change[i][new] = j + n_class * 2
-            class_wise_change[i][had] = j + n_class
-            class_wise_change[i][same] = j + n_class * 2
-            class_wise_change[i][new] = old_image[new]
-
-            class_wise_change[i] = pil_to_base64(Image.fromarray(decode_segmap(
-                class_wise_change[i], service='3-change'), mode='RGBA'))
+            class_wise_change[i][had] = new_image[had]
+            # class_wise_change[i][same] = j + n_class * 2
+            class_wise_change[i][same] = 12
+            class_wise_change[i][new] = old_image[new] + 6
+            
+            striped_classes = {6, 7, 8, 9, 10, 11}
+            result_classwise_change = mask_to_rgb_with_stripes(class_wise_change[i], change_3, striped_classes)
+            class_wise_change[i] = pil_to_base64(result_classwise_change)
+            
+            # class_wise_change[i] = pil_to_base64(Image.fromarray(decode_segmap(
+            #     class_wise_change[i], service='3-change'), mode='RGBA'))
             
     # if n_class == 6:
         # had = (old_image == 4) & (new_image != 4)
@@ -108,13 +113,17 @@ def find_changes(old_image: np.ndarray, new_image: np.ndarray, n_class: int = 6,
         same = (old_image == 1) & (new_image == 1)
         new = (old_image != 1) & (new_image == 1)
         
-        _, _, _, output_image = predict_lulc_unimatchv2(old_sat_image, compare=True)
+        _, _, _, output_image_old = predict_lulc_unimatchv2(old_sat_image, compare=True)
+        _, _, _, output_image_new = predict_lulc_unimatchv2(new_sat_image, compare=True)
 
-        brickfield_change[had] = 6
+        brickfield_change[had] = output_image_new[had]
         brickfield_change[same] = 12
-        brickfield_change[new] = output_image[new]
-        brickfield_change = pil_to_base64(Image.fromarray(decode_segmap(
-            brickfield_change, service='3-change'), mode='RGBA'))
+        brickfield_change[new] = output_image_old[new] + 6
+        striped_classes = {6, 7, 8, 9, 10, 11}
+        result_brickfield_change = mask_to_rgb_with_stripes(brickfield_change, change_3, striped_classes)
+        brickfield_change = pil_to_base64(result_brickfield_change)
+        # brickfield_change = pil_to_base64(Image.fromarray(decode_segmap(
+        #     brickfield_change, service='3-change'), mode='RGBA'))
             
     # service_type = {6: 'lulc', 2: 'brickfield'}
     labels = LABELS.get('lulc') if n_class == 6 else [''] * n_class
@@ -179,7 +188,7 @@ def compare_year(request, min_lon, min_lat, max_lon, max_lat, service):
             input_image_2019, output_image_2019, table_2019, output_image_2019_raw = predict_brickfield_unimatch(
                 image_2019, compare=True)
             specific_class_changes, change_title = find_changes(output_image_2019_raw,
-                                            output_image_2023_raw, 2, old_sat_image=image_2019)
+                                            output_image_2023_raw, 2, old_sat_image=image_2019, new_sat_image=image_2023)
             # class_wise_changes, specific_class_changes, change_title = find_changes(output_image_2019_raw,
             #                                 output_image_2023_raw, 2, old_sat_image=image_2019)
         elif service == 'LULC (Unet)':

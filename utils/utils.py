@@ -1,30 +1,44 @@
 import os
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from PIL import Image, ImageDraw
 
 LABELS = {
     'lulc': ['Farmland', 'Water', 'Forest', 'Built-Up', 'Meadow'],
     'brickfield': ['Non-Brickfield Area', 'Brickfield']
 }
 
-color_light, color_mid, color_dark = 1, 1, 1
+color_light, color_mid, color_dark = 0.5, 0.5, 1
 
 COLORS = {
     'lulc': [(0, 0, 0), (0, 255, 0), (0, 0, 255),
              (0, 255, 255), (255, 0, 0), (255, 255, 0)],
     '3-change': [(0, 0, 0, color_dark), (0, 255, 0, color_dark), (0, 0, 255, color_dark),
              (0, 255, 255, color_dark), (255, 0, 0, color_dark), (255, 255, 0, color_dark),
+             (0, 0, 0, color_light), (0, 255, 0, color_light), (0, 0, 255, color_light),
+             (0, 255, 255, color_light), (255, 0, 0, color_light), (255, 255, 0, color_light),
             #  (0, 0, 0, color_light), (0, 255, 0, color_light), (0, 0, 255, color_light),
             #  (0, 255, 255, color_light), (255, 0, 0, color_light), (255, 255, 0, color_light),
             #  (0, 0, 0, color_mid), (0, 255, 0, color_mid), (0, 0, 255, color_mid),
             #  (0, 255, 255, color_mid), (255, 0, 0, color_mid), (255, 255, 0, color_mid)],
-             (115, 119, 125, color_light), (115, 119, 125, color_light), (115, 119, 125, color_light),
-             (115, 119, 125, color_light), (115, 119, 125, color_light), (115, 119, 125, color_light),
-             (255, 255, 255, color_mid), (255, 255, 255, color_mid), (255, 255, 255, color_mid),
-             (255, 255, 255, color_mid), (255, 255, 255, color_mid), (255, 255, 255, color_mid)],
+            #  (115, 119, 125, color_light), (115, 119, 125, color_light), (115, 119, 125, color_light),
+            #  (115, 119, 125, color_light), (115, 119, 125, color_light), (115, 119, 125, color_light),
+             (255, 255, 255, color_dark), (255, 255, 255, color_dark), (255, 255, 255, color_dark),
+             (255, 255, 255, color_dark), (255, 255, 255, color_dark), (255, 255, 255, color_dark),],
+            #  (0, 0, 0, color_light), (0, 255, 0, color_light), (0, 0, 255, color_light),
+            #  (0, 255, 255, color_light), (255, 0, 0, color_light), (255, 255, 0, color_light)],
     'brickfield': [(0, 0, 0), (255, 0, 0)],
     # '3-change': [(0, 0, 0), (115, 119, 125), (130, 113, 96), (255, 255, 255)]
 }
+
+change_3 = {0: (0, 0, 0), 1: (0, 255, 0), 2: (0, 0, 255),
+            3: (0, 255, 255), 4: (255, 0, 0), 5: (255, 255, 0),
+            6: (0, 0, 0), 7: (0, 255, 0), 8: (0, 0, 255),
+            9: (0, 255, 255), 10: (255, 0, 0), 11: (255, 255, 0),
+            12: (255, 255, 255)} 
+            # 13: (255, 255, 255), 14: (255, 255, 255),
+            # 15: (255, 255, 255), 16: (255, 255, 255), 17: (255, 255, 255)}
+# change_3 = {i: color for i, color in enumerate(COLORS['3-change'])}
 
 n_class = {
     'lulc': 6,
@@ -254,3 +268,45 @@ def decode_segmap(image: np.ndarray, service='lulc') -> np.ndarray:
 
     rgb = np.stack([r, g, b, a], axis=2)
     return rgb
+
+
+def generate_stripes(size, stripe_color, bg_color, stripe_width=4, angle=45):
+    """
+    Create a striped pattern image of given size.
+    """
+    img = Image.new("RGB", size, bg_color)
+    draw = ImageDraw.Draw(img)
+
+    w, h = size
+    if angle == 45:
+        for x in range(-h, w, stripe_width * 2):
+            draw.line((x, 0, x + h, h), fill=stripe_color, width=stripe_width)
+    elif angle == 90:
+        for x in range(0, w, stripe_width * 2):
+            draw.line((x, 0, x, h), fill=stripe_color, width=stripe_width)
+
+    return img
+
+def mask_to_rgb_with_stripes(mask, class_color_map, striped_classes):
+    """
+    Convert a class mask to an RGB image with optional striped patterns.
+    """
+    h, w = mask.shape
+    final_img = Image.new("RGB", (w, h))
+
+    for class_id, color in class_color_map.items():
+        mask_region = (mask == class_id)
+        if class_id in striped_classes:
+            # Generate stripes
+            stripes = generate_stripes((w, h), stripe_color=color, bg_color=(255, 255, 255), stripe_width=4)
+            mask_img = Image.fromarray((mask_region * 255).astype(np.uint8)).convert("L")
+            striped_region = Image.composite(stripes, final_img, mask_img)
+            final_img = Image.composite(striped_region, final_img, mask_img)
+        else:
+            # Fill solid color
+            solid = Image.new("RGB", (w, h), color)
+            mask_img = Image.fromarray((mask_region * 255).astype(np.uint8)).convert("L")
+            solid_region = Image.composite(solid, final_img, mask_img)
+            final_img = Image.composite(solid_region, final_img, mask_img)
+
+    return final_img
